@@ -27,8 +27,8 @@ char *modding_archive_override;
 char *modding_additional_files[MAX_MOD_FILES];
 int num_mod_files;
 
-int StringEndsWith(char *src, char *dst) {
-    char *s = strrchr(src, '.');
+int StringEndsWith(const char *src, const char *dst) {
+    const char *s = strrchr(src, '.');
 
     if (s != NULL)
         return (strcmp(s, dst)) == 0;
@@ -36,7 +36,7 @@ int StringEndsWith(char *src, char *dst) {
     return 0;
 }
 
-int AddResourceFile(char *filename) {
+int AddResourceFile(const char *filename) {
     printf("Found resource file: %s\n", filename);
 
     if (num_mod_files < MAX_MOD_FILES) {
@@ -48,7 +48,7 @@ int AddResourceFile(char *filename) {
     return OK;
 }
 
-int AddArchiveFile(char *filename) {
+int AddArchiveFile(const char *filename) {
     printf("Found archive file: %s\n", filename);
 
     char *f = (char *)malloc(strlen(filename) + 1);
@@ -57,7 +57,7 @@ int AddArchiveFile(char *filename) {
     return OK;
 }
 
-int ProcessModFile(char *filename, uchar follow_dirs) {
+int ProcessModFile(const char *filename, uchar follow_dirs) {
     printf("ProcessModFile: %s\n", filename);
 
     if (StringEndsWith(filename, ".dat")) {
@@ -70,18 +70,9 @@ int ProcessModFile(char *filename, uchar follow_dirs) {
     return OK;
 }
 
-int ProcessModArgs(int argc, char **argv) {
-    // Default things
+int InitMods(int n_paths, const char **paths) {
+    // initialize global state
     num_mod_files = 0;
-    int mod_args_start = 1;
-
-    // Skip arguments
-    for (int i = 1; i < argc; i++) {
-        if (argv[i][0] == '-') {
-            mod_args_start++;
-        }
-    }
-
     // Default the mod list to empty
     modding_archive_override = NULL;
     for (int i = 0; i < MAX_MOD_FILES; i++) {
@@ -89,15 +80,15 @@ int ProcessModArgs(int argc, char **argv) {
     }
 
     // Now go process args
-    for (int i = mod_args_start; i < argc; i++) {
-        ProcessModFile(argv[i], TRUE);
+    for (int i = 0; i < n_paths; i++) {
+        ProcessModFile(paths[i], TRUE);
     }
 
     // shamaz: return value is not checked anyway
     return OK;
 }
 
-int ProcessModDirectory(char *dirname) {
+int ProcessModDirectory(const char *dirname) {
     // Check if this is a directory
 
     printf("ProcessModDirectory %s\n", dirname);

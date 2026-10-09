@@ -42,11 +42,11 @@ extern int num_mod_files;
 //  Function Prototypes
 //--------------------
 
-int AddResourceFile(char *filename);
-int AddArchiveFile(char *filename);
-int ProcessModFile(char *filename, uchar follow_dirs);
-int ProcessModArgs(int argc, char **argv);
-int ProcessModDirectory(char *dirname);
+int AddResourceFile(const char *filename);
+int AddArchiveFile(const char *filename);
+int ProcessModFile(const char *filename, uchar follow_dirs);
+int InitMods(int n_paths, const char **paths);
+int ProcessModDirectory(const char *dirname);
 int LoadModFiles(void);
 
 #endif //__MODDING_H

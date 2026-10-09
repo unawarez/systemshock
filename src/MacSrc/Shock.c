@@ -58,9 +58,6 @@ SDL_Renderer *renderer;
 
 SDL_AudioDeviceID device;
 
-int num_args;
-char **arg_values;
-
 extern grs_screen *svga_screen;
 extern frc *svga_render_context;
 
@@ -77,14 +74,47 @@ extern void CreateDefaultKeybindsFile(void);
 extern void LoadHotkeyKeybinds(void);
 extern void LoadMoveKeybinds(void);
 
+// CLI arg parsing:
+struct ModArg;
+struct Args {
+    bool no_splash;
+    size_t n_mod_args;
+    const char **mod_args;
+};
+void show_usage(const char *arg0) {
+    fprintf(stderr,
+            "Usage: %s [options...] [mod file/dir...]\n"
+            "Options: (note `-arg` or `--arg` both accepted)\n"
+            "  -h, -help    Show usage info\n"
+            "  -nosplash    Disable splash screen\n",
+            arg0);
+}
+
 //------------------------------------------------------------------------------------
 //		Main function.
 //------------------------------------------------------------------------------------
 int main(int argc, char **argv) {
-    // Save the arguments for later
-
-    num_args = argc;
-    arg_values = argv;
+    struct Args args = {0};
+    for (char **argp = argv + 1; argp < argv + argc; argp++) {
+        const char *arg = *argp;
+        if (arg[0] != '-') {
+            // assume it's a mod pathname
+            args.n_mod_args++;
+            args.mod_args = realloc(args.mod_args, sizeof(char *) * args.n_mod_args);
+            if (!args.mod_args)
+                return 99;
+            args.mod_args[args.n_mod_args - 1] = arg;
+        } else if (!strcmp(arg, "-h") || !strcmp(arg, "-help") || !strcmp(arg, "--help")) {
+            show_usage(argv[0]);
+            return 0;
+        } else if (!strcmp(arg, "-nosplash") || !strcmp(arg, "--nosplash")) {
+            args.no_splash = true;
+        } else {
+            fprintf(stderr, "Unknown argument `%s`\n", arg);
+            show_usage(argv[0]);
+            return 1;
+        }
+    }
 
     // FIXME externalize this
     log_set_quiet(0);
@@ -107,13 +137,8 @@ int main(int argc, char **argv) {
     LoadHotkeyKeybinds();
     LoadMoveKeybinds();
 
-    // Process some startup arguments
-
-    bool show_splash = !CheckArgument("-nosplash");
-
     // CC: Modding support! This is so exciting.
-
-    ProcessModArgs(argc, argv);
+    InitMods(args.n_mod_args, args.mod_args);
 
     // Initialize
 
@@ -126,9 +151,10 @@ int main(int argc, char **argv) {
     gr_clear(0xFF);
 
     // Draw the splash screen
-
-    INFO("Showing splash screen");
-    splash_draw(show_splash);
+    if (!args.no_splash) {
+        INFO("Showing splash screen");
+        splash_draw();
+    }
 
     // Start in the Main Menu loop
 
@@ -144,19 +170,6 @@ int main(int argc, char **argv) {
     stop_music();
 
     return 0;
-}
-
-bool CheckArgument(char *arg) {
-    if (arg == NULL)
-        return false;
-
-    for (int i = 1; i < num_args; i++) {
-        if (strcmp(arg_values[i], arg) == 0) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 void InitSDL() {
