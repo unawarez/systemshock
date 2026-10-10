@@ -8,14 +8,15 @@ cmake_policy(SET CMP0077 NEW) # Abort if variables are not clearly set
 include(FeatureSummary)
 include(FetchContent)
 
-# Required for stdbool.h
+# C/C++ config:
+# LANGUAGE_EXTENSIONS OFF is an attempt for non-MSVC devs to avoid writing
+# things that will fail on MSVC.
 set(CMAKE_C_STANDARD 99)
-# For nullptr in C++
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_LANGUAGE_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g ")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -D__STDC_LIMIT_MACROS")
+set(CMAKE_CXX_LANGUAGE_EXTENSIONS OFF)
 
 option(ENABLE_EXAMPLES "Enable example applications" OFF)
 add_feature_info(ENABLE_EXAMPLES ENABLE_EXAMPLES "Enable example application (can be broken!)")
