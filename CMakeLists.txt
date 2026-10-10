@@ -18,8 +18,6 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_LANGUAGE_EXTENSIONS OFF)
 
-option(ENABLE_EXAMPLES "Enable example applications" OFF)
-add_feature_info(ENABLE_EXAMPLES ENABLE_EXAMPLES "Enable example application (can be broken!)")
 option(ENABLE_DEBUG_BLIT "Enable debugging blitter" OFF)
 add_feature_info(ENABLE_DEBUG_BLIT ENABLE_DEBUG_BLIT "Enable debugging blitter")
 option(ENABLE_OPENGL "Enable OpenGL support" ON)
@@ -366,80 +364,6 @@ set(GAME_SRC
 	src/GameSrc/gamerend.c
 	src/GameSrc/mouselook.c
 )
-
-if(ENABLE_EXAMPLES)
-
-add_executable(playmov
-	src/Libraries/AFILE/Tests/playmov.c
-)
-add_executable(movinfo
-	src/Libraries/AFILE/Tests/movinfo.c
-)
-
-target_link_libraries(playmov
-	AFILE_LIB
-	FIX_LIB
-	${SDL2_LIBRARIES}
-	${SDL2_MIXER_LIBRARIES}
-)
-
-target_link_libraries(movinfo
-	AFILE_LIB
-	FIX_LIB
-)
-
-add_executable(TestSimpleMain
-	src/Libraries/2D/TestSource/SimpleMain.c
-)
-
-target_link_libraries(TestSimpleMain
-	2D_LIB
-	GR_LIB
-	3D_LIB
-	RES_LIB
-	FIX_LIB
-	LG_LIB
-	${SDL2_LIBRARIES}
-)
-
-add_executable(BoxTest
-	src/Libraries/3D/Tests/BoxTest.c
-)
-
-target_link_libraries(BoxTest
-	2D_LIB
-	GR_LIB
-	3D_LIB
-	RES_LIB
-	FIX_LIB
-	LG_LIB
-	${SDL2_LIBRARIES}
-)
-
-add_executable(BitmapTest
-	src/Libraries/3D/Tests/BitmapTest.c
-)
-
-target_link_libraries(BitmapTest
-	2D_LIB
-	GR_LIB
-	3D_LIB
-	RES_LIB
-	FIX_LIB
-	LG_LIB
-	${SDL2_LIBRARIES}
-)
-
-add_executable(FixTest
-	src/Libraries/FIX/Tests/FixTest/fixtest.c
-)
-
-target_link_libraries(FixTest
-	FIX_LIB
-	LG_LIB
-)
-
-endif()
 
 add_executable(systemshock
 	${MAC_SRC}
