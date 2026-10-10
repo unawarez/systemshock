@@ -2,9 +2,6 @@ cmake_minimum_required(VERSION 3.28)
 
 project(shockolate VERSION 0.7.8)
 
-cmake_policy(SET CMP0072 NEW) # Prefer new GLVND library interface
-cmake_policy(SET CMP0077 NEW) # Abort if variables are not clearly set
-
 include(FeatureSummary)
 include(FetchContent)
 
@@ -95,8 +92,7 @@ endif(ENABLE_SDL2 MATCHES "BUNDLED")
 
 if(ENABLE_SOUND MATCHES "ON")
 	# FIXME applies only for *nix systems
-	find_package(PkgConfig)
-	pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer>=2.0.4)
+    find_package(SDL2_mixer REQUIRED)
 	add_definitions(-DUSE_SDL_MIXER=1)
 endif(ENABLE_SOUND MATCHES "ON")
 if(ENABLE_SOUND MATCHES "BUNDLED")
@@ -124,7 +120,7 @@ endif(ENABLE_SOUND MATCHES "BUNDLED")
 
 if(ENABLE_FLUIDSYNTH MATCHES "ON")
 	find_package(PkgConfig)
-	pkg_check_modules(FLUIDSYNTH REQUIRED fluidsynth)
+    pkg_check_modules(fluidsynth REQUIRED IMPORTED_TARGET fluidsynth)
 	add_definitions("-DUSE_FLUIDSYNTH=1")
 endif(ENABLE_FLUIDSYNTH MATCHES "ON")
 if(ENABLE_FLUIDSYNTH MATCHES "BUNDLED")
@@ -197,7 +193,7 @@ endif(GIT_FOUND)
 
 message(STATUS "Version is ${PROJECT_VERSION}${PROJECT_REVERSION_STRING}")
 configure_file("${CMAKE_SOURCE_DIR}/src/GameSrc/Headers/shockolate_version.h.in"
-	"${CMAKE_BINARY_DIR}/src/GameSrc/Headers/shockolate_version.h" )
+	"${CMAKE_BINARY_DIR}/generated/shockolate_version.h" )
 
 # Configuration done. Print features
 feature_summary(WHAT ENABLED_FEATURES DESCRIPTION "Enabled features:")
@@ -206,46 +202,8 @@ feature_summary(WHAT DISABLED_FEATURES DESCRIPTION "Disabled features:")
 # Sources configuration
 add_subdirectory(src/Libraries/)
 
-include_directories(
-	BEFORE
-	src/Libraries/2D/Source
-	src/Libraries/3D/Source
-	src/Libraries/AFILE/Source
-	src/Libraries/DSTRUCT/Source
-	src/Libraries/EDMS/Source
-	src/Libraries/FIXPP/Source
-	src/Libraries/INPUT/Source
-	src/Libraries/PALETTE/Source
-	src/Libraries/RES/Source
-	src/Libraries/UI/Source
-	src/Libraries/RND/Source
-	src/Libraries/VOX/Source
-	src/Libraries/FIX/Source
-	src/Libraries/SND/Source
-	src/Libraries/H
-	src/Libraries/LG/Source
-	src/Libraries/LG/Source/LOG/src
-	src/Libraries/adlmidi/include
-	src/GameSrc/Headers
-	src/MacSrc
-	src/MusicSrc
-	${CMAKE_BINARY_DIR}/src/GameSrc/Headers
-)
-
-set(MAC_SRC
-	src/MacSrc/ShockBitmap.c
-	src/MacSrc/InitMac.c
-	src/MacSrc/Shock.c
-	src/MacSrc/Prefs.c
-	src/MacSrc/MacTune.c
-	src/MacSrc/SDLSound.c
-	src/MacSrc/Modding.c
-	src/MacSrc/OpenGL.cc
-	src/MacSrc/Xmi.c
-	src/MusicSrc/MusicDevice.c
-)
-
-set(GAME_SRC
+# MacSrc and GameSrc circularly depend on each other. Thus GAME_LIB was a lie.
+add_executable(systemshock WIN32
 	src/GameSrc/ai.c
 	src/GameSrc/airupt.c
 	src/GameSrc/amap.c
@@ -363,45 +321,45 @@ set(GAME_SRC
 	src/GameSrc/wrapper.c
 	src/GameSrc/gamerend.c
 	src/GameSrc/mouselook.c
+	src/MacSrc/ShockBitmap.c
+	src/MacSrc/InitMac.c
+	src/MacSrc/Shock.c
+	src/MacSrc/Prefs.c
+	src/MacSrc/MacTune.c
+	src/MacSrc/SDLSound.c
+	src/MacSrc/Modding.c
+	src/MacSrc/OpenGL.cc
+	src/MacSrc/Xmi.c
+	src/MusicSrc/MusicDevice.c
 )
-
-add_executable(systemshock
-	${MAC_SRC}
-)
+target_include_directories(systemshock PUBLIC
+    src/GameSrc/Headers
+    src/MacSrc
+    src/MusicSrc
+    ${CMAKE_BINARY_DIR}/generated)
 target_precompile_headers(systemshock PUBLIC src/GameSrc/Headers/precompiled.h)
-
-add_library(GAME_LIB ${GAME_SRC})
-# Include magic header file, set struct packing size
-target_precompile_headers(GAME_LIB PUBLIC src/GameSrc/Headers/precompiled.h)
-
-# MINGW additional linker options
-if(MINGW)
-	set(WINDOWS_LIBRARIES "mingw32 -mwindows")
-endif(MINGW)
-
-target_link_libraries(systemshock
-	${WINDOWS_LIBRARIES} # Set it before any linker options! Beware WinMain@16 error!!
-	GAME_LIB
-	UI_LIB
-	2D_LIB
-	LG_LIB
-	GR_LIB
-	3D_LIB
-	RND_LIB
-	AFILE_LIB
-	DSTRUCT_LIB
-	FIX_LIB
-	INPUT_LIB
-	PALETTE_LIB
-	RES_LIB
-#	SND_LIB
-	VOX_LIB
-	EDMS_LIB
-	FIXPP_LIB
-	ADLMIDI_LIB
-	${SDL2_LIBRARIES}
-	${SDL2_MIXER_LIBRARIES}
-	${FLUIDSYNTH_LIBRARIES}
+if(APPLE)
+    target_compile_definitions(systemshock PRIVATE GL_SILENCE_DEPRECATION)
+endif()
+target_link_libraries(systemshock PUBLIC
+    shockLG
+    shockRES
+    shockDSTRUCT
+    shock2D
+    shockUI
+    shockSND
+    shockEDMS
+    shockRND
+    shockPALETTE
+    shockVOX
+    shockAFILE
+    shockADLMIDI
+    # UH-OH breaking a bunch of static linking stuff from upstream! I just want
+    # it to build for me for now. And static vs shared deps should be
+    # configurable anyway.
+    SDL2::SDL2main SDL2::SDL2
+    SDL2_mixer::SDL2_mixer
+    PkgConfig::fluidsynth
 	${OPENGL_LIBRARIES}
 	${ALSA_LIBRARIES}
 )

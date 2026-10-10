@@ -1,7 +1,28 @@
-enable_language(ASM)
-set(can_use_assembler TRUE)
+# As of last revamp of this file, I didn't put much effort into figuring
+# private vs public headers. The codebase seems to be based on all filenames
+# being unique across all folders, so it doesn't really matter. The files
+# themselves are mostly not separated into header folders, so it would take
+# reversing to find public vs private API in each library. If you go to that
+# effort, you should move the public header files out of the Source folders.
+add_library(shockLG
+	LG/Source/LOG/src/log.c
+	LG/Source/memall.c
+	LG/Source/stack.c
+	LG/Source/tmpalloc.c
+)
+target_include_directories(shockLG PUBLIC H LG/Source LG/Source/LOG/src)
 
-set(2D_SRC
+add_library(shockFIX
+	FIX/Source/f_exp.c
+	FIX/Source/fix.c
+	FIX/Source/fix_pow.c
+	FIX/Source/fix_sqrt.c
+	FIX/Source/MakeTables.c
+)
+target_include_directories(shockFIX PUBLIC FIX/Source)
+target_link_libraries(shockFIX shockLG m)
+
+add_library(shock2D
 	2D/Source/bit.c
 	2D/Source/bitmap.c
 	2D/Source/blend.c
@@ -152,17 +173,17 @@ set(2D_SRC
 	2D/Source/string/struscl.c
 	2D/Source/string/strwrap.c
 )
-
-set(GR_SRC
-	2D/Source/GR/grd.c
-	2D/Source/GR/grilin.c
-	2D/Source/GR/grmalloc.c
-	2D/Source/GR/grnull.c
-	2D/Source/GR/gruilin.c
+target_include_directories(shock2D PUBLIC
+    2D/Source
+    2D/Source/Clip
+    2D/Source/Flat8
+    2D/Source/Gen
+    2D/Source/GR
+    2D/Source/RSD
 )
+target_link_libraries(shock2D shockLG shockFIX)
 
-
-set(3D_SRC
+add_library(shock3D
 	3D/Source/alloc.c
 	3D/Source/Bitmap.c
 	3D/Source/clip.c
@@ -179,49 +200,13 @@ set(3D_SRC
 	3D/Source/tmap.c
 	3D/Source/vector.c
 )
+target_include_directories(shock3D PUBLIC 3D/Source)
+# a bunch of 3D files have an unconditional `#include "OpenGL.h", and that
+# lives in ../MacSrc, gross
+target_include_directories(shock3D PRIVATE ../MacSrc)
+target_link_libraries(shock3D shock2D m)
 
-set(AFILE_SRC
-	AFILE/Source/afile.c
-	AFILE/Source/amov.c
-	AFILE/Source/compose.c
-	AFILE/Source/draw4x4.cpp
-	AFILE/Source/huffde.cpp
-	AFILE/Source/movie.c)
-
-set(DSTRUCT_SRC
-	DSTRUCT/Source/array.c
-	DSTRUCT/Source/hash.c
-	DSTRUCT/Source/pqueue.c
-	DSTRUCT/Source/rect.c
-)
-
-
-set(FIX_SRC
-	FIX/Source/f_exp.c
-	FIX/Source/fix.c
-	FIX/Source/fix_pow.c
-	FIX/Source/fix_sqrt.c
-	FIX/Source/MakeTables.c
-)
-
-set(INPUT_SRC
-	INPUT/Source/kbcook.c
-	INPUT/Source/mouse.c
-	INPUT/Source/sdl_events.c
-)
-
-set(LG_SRC
-	LG/Source/LOG/src/log.c
-	LG/Source/memall.c
-	LG/Source/stack.c
-	LG/Source/tmpalloc.c
-)
-
-set(PALETTE_SRC
-        PALETTE/Source/palette.c
-)
-
-set(RES_SRC
+add_library(shockRES
 	RES/Source/caseless.c
 	RES/Source/lzw.c
 	RES/Source/refacc.c
@@ -234,21 +219,29 @@ set(RES_SRC
 	RES/Source/resmake.c
 	RES/Source/restypes.c
 )
+target_include_directories(shockRES PUBLIC RES/Source)
+target_link_libraries(shockRES shockLG shock2D)
 
-set(RND_SRC
-	RND/Source/rnd.c
+add_library(shockDSTRUCT
+	DSTRUCT/Source/array.c
+	DSTRUCT/Source/hash.c
+	DSTRUCT/Source/pqueue.c
+	DSTRUCT/Source/rect.c
 )
+target_include_directories(shockDSTRUCT PUBLIC DSTRUCT/Source)
+target_link_libraries(shockDSTRUCT shockLG)
 
-set(SND_SRC
-	SND/Source/dig_init.c
-	SND/Source/dig_ops.c
-	SND/Source/master.c
-	SND/Source/mid_init.c
-	SND/Source/mid_ops.c
-	SND/Source/snd_util.c
+add_library(shockINPUT
+	INPUT/Source/kbcook.c
+	INPUT/Source/mouse.c
+	INPUT/Source/sdl_events.c
 )
+target_include_directories(shockINPUT PUBLIC INPUT/Source)
+# hella circular dependencies
+target_include_directories(shockINPUT PRIVATE ../MacSrc ../GameSrc/Headers)
+target_link_libraries(shockINPUT shockLG shock3D)
 
-set(UI_SRC
+add_library(shockUI
 	UI/Source/curdrw.c
 	UI/Source/cursors.c
 	UI/Source/event.c
@@ -257,12 +250,20 @@ set(UI_SRC
 	UI/Source/slab.c
 	UI/Source/vmouse.c
 )
+target_include_directories(shockUI PUBLIC UI/Source)
+target_link_libraries(shockUI PUBLIC shockLG shock2D shockDSTRUCT shockINPUT)
 
-set(FIXPP_SRC
+add_library(shockSND INTERFACE)
+# nothing but a header file
+target_include_directories(shockSND INTERFACE SND/Source)
+
+add_library(shockFIXPP
 	FIXPP/Source/fixpp.cpp
 )
+target_include_directories(shockFIXPP PUBLIC FIXPP/Source)
+target_link_libraries(shockFIXPP shockFIX)
 
-set(EDMS_SRC
+add_library(shockEDMS
 	EDMS/Source/interfac.cc
 	EDMS/Source/collide.cc
 	EDMS/Source/intrsect.cc
@@ -278,8 +279,40 @@ set(EDMS_SRC
 	EDMS/Source/MODELS/ftlface.cc
 	EDMS/Source/MODELS/d_f_2.cc
 )
+target_include_directories(shockEDMS PUBLIC EDMS/Source EDMS/Source/MODELS)
+target_link_libraries(shockEDMS shockFIXPP)
 
-set(ADLMIDI_SRC
+add_library(shockRND
+	RND/Source/rnd.c
+)
+target_include_directories(shockRND PUBLIC RND/Source)
+target_link_libraries(shockRND shockLG shockFIX)
+
+add_library(shockPALETTE
+	PALETTE/Source/palette.c
+)
+target_include_directories(shockPALETTE PUBLIC PALETTE/Source)
+target_link_libraries(shockPALETTE shockLG shock2D shockFIX)
+
+add_library(shockVOX
+	VOX/Source/vox2d.c
+	VOX/Source/vox3d.c
+	VOX/Source/voxinit.c
+)
+target_include_directories(shockVOX PUBLIC VOX/Source)
+target_link_libraries(shockVOX shockLG shock2D shock3D)
+
+add_library(shockAFILE
+	AFILE/Source/afile.c
+	AFILE/Source/amov.c
+	AFILE/Source/compose.c
+	AFILE/Source/draw4x4.cpp
+	AFILE/Source/huffde.cpp
+	AFILE/Source/movie.c)
+target_link_libraries(shockAFILE shock2D shockRES shockDSTRUCT)
+target_include_directories(shockAFILE PUBLIC AFILE/Source)
+
+add_library(shockADLMIDI
 	adlmidi/adlmidi_sequencer.cpp
 	adlmidi/adlmidi_bankmap.tcc
 	adlmidi/cvt_mus2mid.hpp
@@ -318,54 +351,4 @@ set(ADLMIDI_SRC
 	adlmidi/fraction.hpp
 	adlmidi/midi_sequencer.h
 )
-
-set(VOX_SRC
-	VOX/Source/vox2d.c
-	VOX/Source/vox3d.c
-	VOX/Source/voxinit.c
-)
-
-include_directories(
-	${CMAKE_SOURCE_DIR}/src/GameSrc/Headers
-	${CMAKE_SOURCE_DIR}/src/MacSrc
-	${CMAKE_SOURCE_DIR}/src/Libraries/adlmidi/include
-	${CMAKE_SOURCE_DIR}/src/Libraries/2D/Source/GR
-	${CMAKE_SOURCE_DIR}/src/Libraries/2D/Source/Clip
-	${CMAKE_SOURCE_DIR}/src/Libraries/2D/Source/Flat8
-	${CMAKE_SOURCE_DIR}/src/Libraries/2D/Source/Gen
-	${CMAKE_SOURCE_DIR}/src/Libraries/2D/Source/RSD
-	${CMAKE_SOURCE_DIR}/src/Libraries/2D/Source
-	${CMAKE_SOURCE_DIR}/src/Libraries/3D/Source
-	${CMAKE_SOURCE_DIR}/src/Libraries/AFILE/Source
-	${CMAKE_SOURCE_DIR}/src/Libraries/DSTRUCT/Source
-	${CMAKE_SOURCE_DIR}/src/Libraries/H
-	${CMAKE_SOURCE_DIR}/src/Libraries/INPUT/Source
-	${CMAKE_SOURCE_DIR}/src/Libraries/FIX/Source
-	${CMAKE_SOURCE_DIR}/src/Libraries/LG/Source
-	${CMAKE_SOURCE_DIR}/src/Libraries/LG/Source/LOG/src
-	${CMAKE_SOURCE_DIR}/src/Libraries/RES/Source
-	${CMAKE_SOURCE_DIR}/src/Libraries/FIXPP/Source
-	${CMAKE_SOURCE_DIR}/src/Libraries/EDMS/Source
-	${CMAKE_SOURCE_DIR}/src/Libraries/EDMS/Source/MODELS
-)
-
-add_library(2D_LIB ${2D_SRC})
-target_link_libraries(2D_LIB LG_LIB)
-add_library(GR_LIB ${GR_SRC})
-add_library(3D_LIB ${3D_SRC})
-target_link_libraries(3D_LIB m)
-add_library(AFILE_LIB ${AFILE_SRC})
-target_link_libraries(AFILE_LIB 2D_LIB RES_LIB)
-add_library(PALETTE_LIB ${PALETTE_SRC})
-add_library(DSTRUCT_LIB ${DSTRUCT_SRC})
-add_library(FIX_LIB ${FIX_SRC})
-target_link_libraries(FIX_LIB LG_LIB m)
-add_library(INPUT_LIB ${INPUT_SRC})
-add_library(LG_LIB ${LG_SRC})
-add_library(RES_LIB ${RES_SRC})
-add_library(RND_LIB ${RND_SRC})
-add_library(UI_LIB ${UI_SRC})
-add_library(VOX_LIB ${VOX_SRC})
-add_library(FIXPP_LIB ${FIXPP_SRC})
-add_library(EDMS_LIB ${EDMS_SRC})
-add_library(ADLMIDI_LIB ${ADLMIDI_SRC})
+target_include_directories(shockADLMIDI PUBLIC adlmidi/include)
