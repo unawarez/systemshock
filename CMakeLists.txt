@@ -176,24 +176,26 @@ if(NOT WIN32)
 endif(NOT WIN32)
 
 # Generate version based on project version
-set(PROJECT_REVERSION_STRING "")
+set(PROJECT_REVISION_STRING "")
 find_package(Git)
 if(GIT_FOUND)
-	execute_process(COMMAND ${GIT_EXECUTABLE} describe --dirty
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-		OUTPUT_VARIABLE git_describe_out
-		ERROR_VARIABLE git_describe_error
-		RESULT_VARIABLE git_describe_result
-		)
-	string(REGEX MATCH "[a-z|0-9|.]*-[0-9]*-g([a-z|0-9]*)([-|a-z]*)" git_commit "${git_describe_out}")
-	set(git_commit ${CMAKE_MATCH_1})
-	set(git_dirty ${CMAKE_MATCH_2})
-	set(PROJECT_REVERSION_STRING "-g${git_commit}${git_dirty}")
+    execute_process(COMMAND ${GIT_EXECUTABLE} describe --always --dirty
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE git_describe_out
+        ERROR_VARIABLE git_describe_error
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE git_describe_result
+    )
+    if(git_describe_result EQUAL 0)
+        set(PROJECT_REVISION_STRING "-g${git_describe_out}")
+    else()
+        message(WARNING "git describe failed: ${git_describe_error}")
+    endif()
 endif(GIT_FOUND)
 
-message(STATUS "Version is ${PROJECT_VERSION}${PROJECT_REVERSION_STRING}")
+message(STATUS "Version is ${PROJECT_VERSION}${PROJECT_REVISION_STRING}")
 configure_file("${CMAKE_SOURCE_DIR}/src/GameSrc/Headers/shockolate_version.h.in"
-	"${CMAKE_BINARY_DIR}/generated/shockolate_version.h" )
+    "${CMAKE_BINARY_DIR}/generated/shockolate_version.h" )
 
 # Configuration done. Print features
 feature_summary(WHAT ENABLED_FEATURES DESCRIPTION "Enabled features:")
