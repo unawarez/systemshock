@@ -116,11 +116,13 @@ typedef struct old_Obj {
 // either the free chain or the used chain.
 
 // The header for an array of class-specific data
+#pragma pack(pop) // 2026 aligned pointer fix. I am *sorta sure* from reading code that this struct is never serialized. I am more sure from saving/loading games without any crashes.
 typedef struct ObjSpecHeader {
     uchar size;        // size of array
     uchar struct_size; // size of each element
     char *data;        // pointer to array of class-specific data
 } ObjSpecHeader;
+#pragma pack(push, 2)
 
 // The common part of any class-specific structure.  You can cast any class-specific
 // structure to an ObjSpec if you want to write super-general code.
