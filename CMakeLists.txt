@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.28)
-
 project(shockolate VERSION 0.7.8)
+# CMake can't handle suffixes in the project version, so this variable is my
+# compromise for denoting this is a fork. Should I change the project name
+# instead? Maybe.
+set(SHOCKOLATE_VERSION_STRING "${PROJECT_VERSION}+unawarez0")
+# This var gets appended later with `-g<git commit hash>`!
 
 include(FeatureSummary)
 include(FetchContent)
@@ -175,11 +179,11 @@ if(NOT WIN32)
   endif(ALSA_FOUND)
 endif(NOT WIN32)
 
-# Generate version based on project version
-set(PROJECT_REVISION_STRING "")
+# Append git commit to version string
 find_package(Git)
 if(GIT_FOUND)
-    execute_process(COMMAND ${GIT_EXECUTABLE} describe --always --dirty
+    # --exclude=* ignores tags, so the output is always just the commit hash
+    execute_process(COMMAND ${GIT_EXECUTABLE} describe --always --dirty --exclude=*
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         OUTPUT_VARIABLE git_describe_out
         ERROR_VARIABLE git_describe_error
@@ -187,13 +191,13 @@ if(GIT_FOUND)
         RESULT_VARIABLE git_describe_result
     )
     if(git_describe_result EQUAL 0)
-        set(PROJECT_REVISION_STRING "-g${git_describe_out}")
+        string(APPEND SHOCKOLATE_VERSION_STRING "-g${git_describe_out}")
     else()
         message(WARNING "git describe failed: ${git_describe_error}")
     endif()
 endif(GIT_FOUND)
 
-message(STATUS "Version is ${PROJECT_VERSION}${PROJECT_REVISION_STRING}")
+message(STATUS "Version is ${SHOCKOLATE_VERSION_STRING}")
 configure_file("${CMAKE_SOURCE_DIR}/src/GameSrc/Headers/shockolate_version.h.in"
     "${CMAKE_BINARY_DIR}/generated/shockolate_version.h" )
 

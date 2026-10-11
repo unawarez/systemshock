@@ -1,3 +1,12 @@
+This is a fork!
+===============
+
+Upstream is [inkyblackness/systemshock](https://github.com/inkyblackness/systemshock), which in turn is a fork of the original [Interrupt/systemshock](https://github.com/Interrupt/systemshock). I'm happy to upstream anything/everything but my edits are probably too messy for now.
+
+Original readme follows.
+
+***
+
 Shockolate - System Shock, but cross-platform!
 ============================
 Based on the source code for PowerPC released by Night Dive Studios, Incorporated.
