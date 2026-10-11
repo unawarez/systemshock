@@ -27,7 +27,6 @@ extern "C" {
 #include "frflags.h"
 #include "player.h"
 #include "textmaps.h"
-#include "star.h"
 #include "tools.h"
 #include "Prefs.h"
 #include "Shock.h"
@@ -40,7 +39,6 @@ extern SDL_Palette *sdlPalette;
 }
 
 #include <map>
-#include <sstream>
 
 struct CachedTexture {
     SDL_Surface *bitmap;
@@ -163,7 +161,7 @@ static void bind_texture(GLuint tex) {
     }
 }
 
-static GLuint compileShader(GLenum type, const char *source) {
+static GLuint compileShader(GLenum type, const char *source, const char *debug_type, const char *debug_name) {
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, nullptr);
     glCompileShader(shader);
@@ -173,55 +171,19 @@ static GLuint compileShader(GLenum type, const char *source) {
     if (status != GL_TRUE) {
         char buffer[512];
         glGetShaderInfoLog(shader, 512, nullptr, buffer);
-        ERROR("Error compiling shader: %s", buffer);
+        ERROR("Error compiling shader %s(%s): %s", debug_name, debug_type, buffer);
         return 0;
     }
 
     return shader;
 }
 
-static GLuint loadShader(GLenum type, const char *filename) {
-
-    DEBUG("Loading shader %s", filename);
-
-#ifdef __APPLE__
-    char fb[1024];
-    sprintf(fb, "%s/shaders/%s", SDL_GetBasePath(), filename);
-#else
-    char fb[256];
-    sprintf(fb, "shaders/%s", filename);
-#endif
-
-    FILE *file = fopen(fb, "r");
-    if (file == nullptr) {
-        ERROR("Could not open shader file %s!", fb);
-        return 0;
-    }
-
-    std::stringstream source;
-    char line[256];
-    while (fgets(line, sizeof(line), file)) {
-        char *c = &line[strlen(line) - 1];
-        while (c >= line && (*c == '\r' || *c == '\n'))
-            *(c--) = '\0';
-        source << line << '\n';
-    }
-    fclose(file);
-
-    GLuint s = compileShader(type, source.str().c_str());
-
-    if (s == 0) {
-        ERROR("Could not compile shader %s", filename);
-    }
-    return s;
-}
-
-static int CreateShader(const char *vertexShaderFile, const char *fragmentShaderFile, Shader *outShader) {
-    GLuint vertShader = loadShader(GL_VERTEX_SHADER, vertexShaderFile);
-    GLuint fragShader = loadShader(GL_FRAGMENT_SHADER, fragmentShaderFile);
+static int CreateShader(const char *vertexShader, const char *fragmentShader, Shader *outShader, const char *debug_name) {
+    GLuint vertShader = compileShader(GL_VERTEX_SHADER, vertexShader, "vert", debug_name);
+    GLuint fragShader = compileShader(GL_FRAGMENT_SHADER, fragmentShader, "frag", debug_name);
 
     if (vertShader == 0 || fragShader == 0) {
-        ERROR("Could not create shader %s : %s", vertexShaderFile, fragmentShaderFile);
+        ERROR("Could not create shader %s", debug_name);
         context = nullptr;
         return 1; // Error!
     }
@@ -289,6 +251,8 @@ static void BindFrameBuffer(FrameBuffer *buffer) {
     }
 }
 
+#include "embedded-shaders.c.inc"
+
 int init_opengl() {
     DEBUG("Initializing OpenGL");
 
@@ -318,9 +282,9 @@ int init_opengl() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glAlphaFunc(GL_GEQUAL, 0.05f);
 
-    CreateShader("main.vert", "texture.frag", &textureShaderProgram);
-    CreateShader("main.vert", "color.frag", &colorShaderProgram);
-    CreateShader("main.vert", "star.frag", &starShaderProgram);
+    CreateShader(shader_main_vert, shader_texture_frag, &textureShaderProgram, "texture");
+    CreateShader(shader_main_vert, shader_color_frag, &colorShaderProgram, "color");
+    CreateShader(shader_main_vert, shader_star_frag, &starShaderProgram, "star");
 
     glGenTextures(1, &dynTexture);
 

@@ -201,6 +201,8 @@ configure_file("${CMAKE_SOURCE_DIR}/src/GameSrc/Headers/shockolate_version.h.in"
 feature_summary(WHAT ENABLED_FEATURES DESCRIPTION "Enabled features:")
 feature_summary(WHAT DISABLED_FEATURES DESCRIPTION "Disabled features:")
 
+include(cmake/shaders.cmake)
+
 # Sources configuration
 add_subdirectory(src/Libraries/)
 
@@ -339,6 +341,12 @@ target_include_directories(systemshock PUBLIC
     src/MacSrc
     src/MusicSrc
     ${CMAKE_BINARY_DIR}/generated)
+target_embedded_shaders_c(systemshock generated/embedded-shaders.c.inc
+    shaders/main.vert
+    shaders/color.frag
+    shaders/star.frag
+    shaders/texture.frag
+)
 target_precompile_headers(systemshock PUBLIC src/GameSrc/Headers/precompiled.h)
 if(APPLE)
     target_compile_definitions(systemshock PRIVATE GL_SILENCE_DEPRECATION)
@@ -399,7 +407,6 @@ if(DEFINED TOOLCHAIN_DLL_DEPENDENCIES)
 	endforeach()
 endif()
 
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/shaders DESTINATION .)
 install(FILES
 	${CMAKE_SOURCE_DIR}/README.md
 	DESTINATION .
