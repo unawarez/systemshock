@@ -6,8 +6,145 @@ project(shockolate VERSION 0.7.8)
 set(SHOCKOLATE_VERSION_STRING "${PROJECT_VERSION}+unawarez0")
 # This var gets appended later with `-g<git commit hash>`!
 
+# `choice` creates a cache var with attached "allowed" set of string values
+# (note CMake doesn't validate these).
+# Usage:
+#   choice(<var name> "description"
+#       CHOICES <choice strings>...
+#       VALUE <default value>
+#   )
+function(choice name desc)
+    cmake_parse_arguments(PARSE_ARGV 2 arg
+        # flags
+        ""
+        # single-value
+        "VALUE"
+        # multi-value
+        "CHOICES"
+    )
+    set("${name}" "${arg_VALUE}" CACHE STRING "${desc}")
+    set_property(CACHE "${name}" PROPERTY STRINGS ${arg_CHOICES})
+endfunction()
+
+# Plumbing for FeatureSummary. Note this is not enough for showing some
+# important non-bool info; may or may not be replaced.
 include(FeatureSummary)
+# `foption` is `option` but also duplicates it into FeatureSummary.
+function(foption name desc)
+    option("${name}" "${desc}" ${ARGN})
+    add_feature_info("${name}" "${name}" "${desc}")
+endfunction()
+# `fset` is `set(... CACHE ...)` but also shows it as an enabled feature in
+# FeatureSummary if the var is truthy. You *must* pass CACHE in the args or
+# else the feature part will get confused trying to extract the description
+# text. (The new freeform `set(CACHE{var})` syntax isn't available until 4.2,
+# but that would help.)
+# macro(fset name)
+#     set("${name}" ${ARGN})
+#     # set(<variable> <value>... CACHE <type> <docstring> [FORCE])
+#     list(GET ARGN -1 desc)
+#     if(desc STREQUAL FORCE)
+#         list(GET ARGN -2 desc)
+#     endif()
+#     add_feature_info("${name}" "${name}" "${desc}")
+# endmacro()
+
+###############################################################################
+# External options
+###############################################################################
+
+foption(SHOCK_ENABLE_OPENGL "Enable OpenGL support" ON)
+foption(SHOCK_ENABLE_DEBUG_BLIT "Enable debugging blitter" OFF)
+
+# Dependency control options
+option(SHOCK_DEPS_DEFAULT_STATIC
+    "Static link to dependencies (can be overridden per dependency)"
+    ON
+)
+option(SHOCK_DEPS_DEFAULT_FETCH
+    "Download and build dependencies (can be overridden per dependency)"
+    ON
+)
+
+function(dep_options var_name pretty_name)
+    choice(SHOCK_DEPS_${var_name}_STATIC "Static link to ${pretty_name} (ON/OFF/DEFAULT)"
+        CHOICES DEFAULT ON OFF
+        VALUE DEFAULT
+    )
+    choice(SHOCK_DEPS_${var_name}_FETCH "Download and build ${pretty_name} (ON/OFF/DEFAULT)"
+        CHOICES DEFAULT ON OFF
+        VALUE DEFAULT
+    )
+endfunction()
+
+dep_options(SDL2 SDL2)
+
+###############################################################################
+# Dependency setup
+###############################################################################
 include(FetchContent)
+
+function(resolve_dep_vars name)
+    set(dep_static "${SHOCK_DEPS_${name}_STATIC}")
+    if(dep_static STREQUAL "DEFAULT")
+        set(dep_static "${SHOCK_DEPS_DEFAULT_STATIC}")
+    endif()
+    set(dep_fetch "${SHOCK_DEPS_${name}_FETCH}")
+    if(dep_fetch STREQUAL "DEFAULT")
+        set(dep_fetch "${SHOCK_DEPS_DEFAULT_FETCH}")
+    endif()
+    return(PROPAGATE dep_static dep_fetch)
+endfunction()
+
+# SDL2 creates 2 targets: dep_SDL2 and dep_SDL2main. Executables are supposed
+# to link SDL2main before SDL2.
+resolve_dep_vars(SDL2)
+message(STATUS "SDL2: static=${dep_static} fetch=${dep_fetch}")
+add_library(dep_SDL2 INTERFACE)
+add_library(dep_SDL2main INTERFACE)
+if(dep_fetch)
+    set(SDL_VERSION 2.32.10)
+    FetchContent_Declare(
+        SDL2
+        GIT_REPOSITORY https://github.com/libsdl-org/SDL
+        GIT_TAG "release-${SDL_VERSION}"
+        EXCLUDE_FROM_ALL
+        # SYSTEM is extra important because on case-insensitive filesystems
+        # `#include "sdl_events.h"` will hit a conflict between
+        # src/Libraries/INPUT/Source/sdl_events.h and SDL2/SDL_events.h.
+        SYSTEM
+    )
+
+    if(dep_static)
+        set(SDL_SHARED OFF CACHE BOOL "Build SDL shared lib" FORCE)
+        set(SDL_STATIC ON CACHE BOOL "Build SDL static lib" FORCE)
+    else()
+        set(SDL_SHARED ON CACHE BOOL "Build SDL shared lib" FORCE)
+        set(SDL_STATIC OFF CACHE BOOL "Build SDL static lib" FORCE)
+    endif()
+    set(SDL_TEST OFF CACHE BOOL "Disable SDL Test" FORCE)
+    set(SDL_INSTALL OFF CACHE BOOL "Disable SDL installation" FORCE)
+
+    FetchContent_MakeAvailable(SDL2)
+
+else()
+    if(dep_static)
+        find_package(SDL2 REQUIRED COMPONENTS SDL2-static SDL2main)
+    else()
+        find_package(SDL2 REQUIRED COMPONENTS SDL2 SDL2main)
+    endif()
+endif()
+if(dep_static)
+    target_link_libraries(dep_SDL2 INTERFACE SDL2::SDL2-static)
+else()
+    target_link_libraries(dep_SDL2 INTERFACE SDL2::SDL2)
+endif()
+target_link_libraries(dep_SDL2main INTERFACE SDL2::SDL2main)
+
+
+###############################################################################
+# Stuff
+###############################################################################
 
 # C/C++ config:
 # LANGUAGE_EXTENSIONS OFF is an attempt for non-MSVC devs to avoid writing
@@ -18,15 +155,6 @@ set(CMAKE_C_LANGUAGE_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_LANGUAGE_EXTENSIONS OFF)
-
-option(ENABLE_DEBUG_BLIT "Enable debugging blitter" OFF)
-add_feature_info(ENABLE_DEBUG_BLIT ENABLE_DEBUG_BLIT "Enable debugging blitter")
-option(ENABLE_OPENGL "Enable OpenGL support" ON)
-add_feature_info(ENABLE_OPENGL ENABLE_OPENGL "Enable OpenGL support")
-
-set(ENABLE_SDL2 "BUNDLED" CACHE STRING "Enable SDL2 (ON/BUNDLED, default BUNDLED)")
-set_property(CACHE ENABLE_SDL2 PROPERTY STRINGS "ON" "BUNDLED")
-add_feature_info(ENABLE_SDL2 ENABLE_SOUND "Enable SDL2 support")
 
 set(ENABLE_SOUND "BUNDLED" CACHE STRING "Enable sound support (requires SDL2_mixer) (ON/BUNDLED/OFF, default BUNDLED)")
 set_property(CACHE ENABLE_SOUND PROPERTY STRINGS "ON" "BUNDLED" "OFF")
@@ -42,14 +170,14 @@ set(BUILD_SHARED_LIBS FALSE CACHE BOOL "Force creation of static libraries, glob
 # HAAAAX!!
 add_definitions(-DSVGA_SUPPORT)
 
-if(ENABLE_DEBUG_BLIT)
+if(SHOCK_ENABLE_DEBUG_BLIT)
 	add_definitions(-DDEBUGGING_BLIT)
 endif()
 
 add_compile_options(-fsigned-char -fno-strict-aliasing)
 
 # Find OpenGL
-if(ENABLE_OPENGL)
+if(SHOCK_ENABLE_OPENGL)
 	find_package(OpenGL REQUIRED)
 	add_definitions(-DUSE_OPENGL)
 	if(WIN32)
@@ -68,31 +196,8 @@ if(ENABLE_OPENGL)
 		list(APPEND OPENGL_INCLUDE_DIRS ${glew_SOURCE_DIR}/include)
 		list(APPEND OPENGL_LIBRARIES glew_s winmm)
 	endif(WIN32)
-endif(ENABLE_OPENGL)
+endif()
 
-if(ENABLE_SDL2 MATCHES "ON")
-	find_package(SDL2 REQUIRED)
-	if(SDL2_FOUND)
-		message(STATUS "SDL2 found: ${SDL2_INCLUDE_DIRS} ${SDL2_LIBRARIES}")
-	endif(SDL2_FOUND)
-endif(ENABLE_SDL2 MATCHES "ON")
-if(ENABLE_SDL2 MATCHES "BUNDLED")
-	set(SDL_VERSION 2.32.10)
-	FetchContent_Declare(
-		SDL2
-		GIT_REPOSITORY https://github.com/libsdl-org/SDL
-		GIT_TAG "release-${SDL_VERSION}"
-		EXCLUDE_FROM_ALL
-	)
-
-	set(SDL_SHARED OFF CACHE BOOL "Disabled SDL shared lib" FORCE)
-	set(SDL_TEST OFF CACHE BOOL "Disable SDL Test" FORCE)
-	set(SDL_INSTALL OFF CACHE BOOL "Disable SDL installation" FORCE)
-
-	FetchContent_MakeAvailable(SDL2)
-	set(SDL2_INCLUDE_DIRS ${SDL2_SOURCE_DIR}/include)
-	set(SDL2_LIBRARIES SDL2::SDL2main SDL2::SDL2-static)
-endif(ENABLE_SDL2 MATCHES "BUNDLED")
 
 if(ENABLE_SOUND MATCHES "ON")
 	# FIXME applies only for *nix systems
@@ -161,7 +266,6 @@ if(ENABLE_FLUIDSYNTH MATCHES "BUNDLED")
 endif(ENABLE_FLUIDSYNTH MATCHES "BUNDLED")
 
 include_directories(
-	${SDL2_INCLUDE_DIRS}
 	${SDL2_MIXER_INCLUDE_DIRS}
 	${FLUIDSYNTH_INCLUDE_DIRS}
 	${OPENGL_INCLUDE_DIRS}
@@ -355,7 +459,7 @@ target_precompile_headers(systemshock PUBLIC src/GameSrc/Headers/precompiled.h)
 if(APPLE)
     target_compile_definitions(systemshock PRIVATE GL_SILENCE_DEPRECATION)
 endif()
-target_link_libraries(systemshock PUBLIC
+target_link_libraries(systemshock PRIVATE
     shockLG
     shockRES
     shockDSTRUCT
@@ -368,10 +472,10 @@ target_link_libraries(systemshock PUBLIC
     shockVOX
     shockAFILE
     shockADLMIDI
+    dep_SDL2main dep_SDL2
     # UH-OH breaking a bunch of static linking stuff from upstream! I just want
     # it to build for me for now. And static vs shared deps should be
     # configurable anyway.
-    SDL2::SDL2main SDL2::SDL2
     SDL2_mixer::SDL2_mixer
     PkgConfig::fluidsynth
 	${OPENGL_LIBRARIES}

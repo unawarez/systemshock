@@ -204,6 +204,8 @@ target_include_directories(shock3D PUBLIC 3D/Source)
 # a bunch of 3D files have an unconditional `#include "OpenGL.h", and that
 # lives in ../MacSrc, gross
 target_include_directories(shock3D PRIVATE ../MacSrc)
+# FURTHERMORE, that MacSrc code uses SDL, so need to manually propagate that dependency.
+target_link_libraries(shock3D dep_SDL2)
 target_link_libraries(shock3D shock2D m)
 
 add_library(shockRES
@@ -220,7 +222,7 @@ add_library(shockRES
 	RES/Source/restypes.c
 )
 target_include_directories(shockRES PUBLIC RES/Source)
-target_link_libraries(shockRES shockLG shock2D)
+target_link_libraries(shockRES shockLG shock2D dep_SDL2)
 
 add_library(shockDSTRUCT
 	DSTRUCT/Source/array.c
@@ -239,7 +241,7 @@ add_library(shockINPUT
 target_include_directories(shockINPUT PUBLIC INPUT/Source)
 # hella circular dependencies
 target_include_directories(shockINPUT PRIVATE ../MacSrc ../GameSrc/Headers)
-target_link_libraries(shockINPUT shockLG shock3D)
+target_link_libraries(shockINPUT shockLG shock3D dep_SDL2)
 
 add_library(shockUI
 	UI/Source/curdrw.c
@@ -251,7 +253,7 @@ add_library(shockUI
 	UI/Source/vmouse.c
 )
 target_include_directories(shockUI PUBLIC UI/Source)
-target_link_libraries(shockUI PUBLIC shockLG shock2D shockDSTRUCT shockINPUT)
+target_link_libraries(shockUI PUBLIC shockLG shock2D shockDSTRUCT shockINPUT dep_SDL2)
 
 add_library(shockSND INTERFACE)
 # nothing but a header file
