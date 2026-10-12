@@ -22,7 +22,9 @@ function(choice name desc)
         # multi-value
         "CHOICES"
     )
-    set("${name}" "${arg_VALUE}" CACHE STRING "${desc}")
+    # auto-append choices to description:
+    list(JOIN arg_CHOICES "/" desc_choices)
+    set("${name}" "${arg_VALUE}" CACHE STRING "${desc} (${desc_choices})")
     set_property(CACHE "${name}" PROPERTY STRINGS ${arg_CHOICES})
 endfunction()
 
@@ -53,7 +55,10 @@ endfunction()
 # External options
 ###############################################################################
 
-foption(SHOCK_ENABLE_OPENGL "Enable OpenGL support" ON)
+# Main features
+foption(SHOCK_ENABLE_OPENGL "Enable OpenGL renderer" ON)
+foption(SHOCK_ENABLE_SOUND "Enable sound (requires SDL2_mixer)" ON)
+# Dev stuff
 foption(SHOCK_ENABLE_DEBUG_BLIT "Enable debugging blitter" OFF)
 
 # Dependency control options
@@ -62,44 +67,74 @@ option(SHOCK_DEPS_DEFAULT_STATIC
     ON
 )
 option(SHOCK_DEPS_DEFAULT_FETCH
-    "Download and build dependencies (can be overridden per dependency)"
+    "Download and compile dependency sources (can be overridden per dependency)"
     ON
 )
 
+# Declare common 'static vs shared' and 'system vs fetch' vars for normal dependencies.
 function(dep_options var_name pretty_name)
-    choice(SHOCK_DEPS_${var_name}_STATIC "Static link to ${pretty_name} (ON/OFF/DEFAULT)"
+    choice(SHOCK_DEPS_${var_name}_STATIC "Static link to ${pretty_name}"
         CHOICES DEFAULT ON OFF
         VALUE DEFAULT
     )
-    choice(SHOCK_DEPS_${var_name}_FETCH "Download and build ${pretty_name} (ON/OFF/DEFAULT)"
+    choice(SHOCK_DEPS_${var_name}_FETCH "Download and compile sources for ${pretty_name}"
         CHOICES DEFAULT ON OFF
         VALUE DEFAULT
     )
 endfunction()
 
 dep_options(SDL2 SDL2)
+# SDL2_mixer isn't used if SHOCK_ENABLE_SOUND is OFF, but not sure which is
+# more troll: the options disappear sometimes, or the options don't disappear
+# but sometimes do nothing.
+# SDL2_mixer shared/static must match SDL2 shared/static!
+# Also, we propagate SDL2_mixer shared/static into SDL2MIXER_DEPS_SHARED to
+# control linkage of all its dependencies.
+# Double-also, we propagate SDL2_mixer fetch/system into SDL2MIXER_VENDORED to
+# control fetch for its dependencies.
+dep_options(SDL2_mixer SDL2_mixer)
 
 ###############################################################################
 # Dependency setup
 ###############################################################################
 include(FetchContent)
 
+# Get the actual values for a dep's STATIC and FETCH choices: it's kind of
+# tricky to collapse `DEFAULT` into the default without accidentally
+# overwriting the `DEFAULT` into CMakeCache. This function spoots the vars
+# `dep_static`, `dep_shared`, and `dep_fetch` into the parent scope with the
+# resolved values. The intended usage is you treat those like scratch vars that
+# keep getting overwritten as you set up each dependency.
+# TODO could change so that a dep's setup is `function(setup_foo static?
+# fetch?)` and meta stuff sets up those args and calls that function. That's
+# really not too meta and it's cleaner.
+# Also TODO might need to save the resolved values into persistently named vars
+# or properties or something, because there are weird conflict cases where we
+# could check and give better error messages. For example, if SDL2
+# shared/static != SDL2_mixer shared/static, SDL2_mixer configure will always
+# die; we could check those vars first and show a messge.
 function(resolve_dep_vars name)
     set(dep_static "${SHOCK_DEPS_${name}_STATIC}")
     if(dep_static STREQUAL "DEFAULT")
         set(dep_static "${SHOCK_DEPS_DEFAULT_STATIC}")
     endif()
+    # some things want shared instead of static, and inverting a boolean in
+    # cmake is dumb, so just do it here.
+    set(dep_shared ON)
+    if(dep_static)
+        set(dep_shared OFF)
+    endif()
     set(dep_fetch "${SHOCK_DEPS_${name}_FETCH}")
     if(dep_fetch STREQUAL "DEFAULT")
         set(dep_fetch "${SHOCK_DEPS_DEFAULT_FETCH}")
     endif()
-    return(PROPAGATE dep_static dep_fetch)
+    message(STATUS "${name}: static=${dep_static} fetch=${dep_fetch}")
+    return(PROPAGATE dep_static dep_shared dep_fetch)
 endfunction()
 
 # SDL2 creates 2 targets: dep_SDL2 and dep_SDL2main. Executables are supposed
 # to link SDL2main before SDL2.
 resolve_dep_vars(SDL2)
-message(STATUS "SDL2: static=${dep_static} fetch=${dep_fetch}")
 add_library(dep_SDL2 INTERFACE)
 add_library(dep_SDL2main INTERFACE)
 if(dep_fetch)
@@ -113,19 +148,16 @@ if(dep_fetch)
         # `#include "sdl_events.h"` will hit a conflict between
         # src/Libraries/INPUT/Source/sdl_events.h and SDL2/SDL_events.h.
         SYSTEM
+        OVERRIDE_FIND_PACKAGE
     )
-
-    if(dep_static)
-        set(SDL_SHARED OFF CACHE BOOL "Build SDL shared lib" FORCE)
-        set(SDL_STATIC ON CACHE BOOL "Build SDL static lib" FORCE)
-    else()
-        set(SDL_SHARED ON CACHE BOOL "Build SDL shared lib" FORCE)
-        set(SDL_STATIC OFF CACHE BOOL "Build SDL static lib" FORCE)
-    endif()
-    set(SDL_TEST OFF CACHE BOOL "Disable SDL Test" FORCE)
-    set(SDL_INSTALL OFF CACHE BOOL "Disable SDL installation" FORCE)
-
-    FetchContent_MakeAvailable(SDL2)
+    block()
+        set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+        set(SDL_SHARED "${dep_shared}")
+        set(SDL_STATIC "${dep_static}")
+        set(SDL_TEST OFF)
+        set(SDL_INSTALL OFF)
+        FetchContent_MakeAvailable(SDL2)
+    endblock()
 
 else()
     if(dep_static)
@@ -141,6 +173,53 @@ else()
 endif()
 target_link_libraries(dep_SDL2main INTERFACE SDL2::SDL2main)
 
+if(SHOCK_ENABLE_SOUND)
+    resolve_dep_vars(SDL2_mixer)
+    add_library(dep_SDL2_mixer INTERFACE)
+    if(dep_fetch)
+        SET(SDL_MIXER_VERSION 2.8.2)
+        FetchContent_Declare(
+            SDL2_mixer
+            GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
+            GIT_TAG release-${SDL_MIXER_VERSION}
+            EXCLUDE_FROM_ALL
+            SYSTEM
+            OVERRIDE_FIND_PACKAGE
+        )
+        block()
+            set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+            set(BUILD_SHARED_LIBS "${dep_shared}")
+            set(SDL2MIXER_DEPS_SHARED "${dep_shared}")
+            set(SDL2MIXER_VENDORED "${dep_fetch}")
+            # Manually maintained copypaste of settings declarations from their
+            # CMakeLists so that it doesn't download and compile a bunch of stuff.
+            set(SDL2MIXER_FLAC OFF)
+            set(SDL2MIXER_GME OFF)
+            set(SDL2MIXER_MOD OFF)
+            set(SDL2MIXER_MP3 OFF)
+            # Upstream does not disable main MIDI option, just fluidsynth, so that
+            # leaves timidity and sometimes native (on w32/apple/haiku)...there is
+            # a strong chance MIDI should be fully disabled.
+            set(SDL2MIXER_MIDI_FLUIDSYNTH OFF)
+            set(SDL2MIXER_OPUS OFF)
+            set(SDL2MIXER_VORBIS "") # not clear if this even works
+            set(SDL2MIXER_WAVE OFF)
+            set(SDL2MIXER_WAVPACK OFF)
+            FetchContent_MakeAvailable(SDL2_mixer)
+        endblock()
+
+    else()
+        find_package(SDL2_mixer REQUIRED)
+    endif()
+    if(dep_static)
+        target_link_libraries(dep_SDL2_mixer INTERFACE SDL2_mixer::SDL2_mixer-static)
+    else()
+        target_link_libraries(dep_SDL2_mixer INTERFACE SDL2_mixer::SDL2_mixer)
+    endif()
+    target_compile_definitions(dep_SDL2_mixer INTERFACE USE_SDL_MIXER=1)
+endif()
+
+
 
 ###############################################################################
 # Stuff
@@ -155,10 +234,6 @@ set(CMAKE_C_LANGUAGE_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_LANGUAGE_EXTENSIONS OFF)
-
-set(ENABLE_SOUND "BUNDLED" CACHE STRING "Enable sound support (requires SDL2_mixer) (ON/BUNDLED/OFF, default BUNDLED)")
-set_property(CACHE ENABLE_SOUND PROPERTY STRINGS "ON" "BUNDLED" "OFF")
-add_feature_info(ENABLE_SOUND ENABLE_SOUND "Enable sound support (requires SDL2_mixer)")
 
 set(ENABLE_FLUIDSYNTH "BUNDLED" CACHE STRING "Enable FluidSynth MIDI support (ON/BUNDLED/OFF, default BUNDLED)")
 set_property(CACHE ENABLE_FLUIDSYNTH PROPERTY STRINGS "ON" "BUNDLED" "OFF")
@@ -199,34 +274,6 @@ if(SHOCK_ENABLE_OPENGL)
 endif()
 
 
-if(ENABLE_SOUND MATCHES "ON")
-	# FIXME applies only for *nix systems
-    find_package(SDL2_mixer REQUIRED)
-	add_definitions(-DUSE_SDL_MIXER=1)
-endif(ENABLE_SOUND MATCHES "ON")
-if(ENABLE_SOUND MATCHES "BUNDLED")
-	SET(SDL_MIXER_VERSION 2.8.2)
-	FetchContent_Declare(
-		SDL2_mixer
-		GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
-		GIT_TAG release-${SDL_MIXER_VERSION}
-		EXCLUDE_FROM_ALL
-	)
-
-	set(SDL2MIXER_OPUS OFF CACHE BOOL "Disable Opus" FORCE)
-	set(SDL2MIXER_MOD OFF CACHE BOOL "Disable MOD" FORCE)
-	set(SDL2MIXER_MP3 OFF CACHE BOOL "Disable MP3" FORCE)
-	set(SDL2MIXER_MIDI_FLUIDSYNTH OFF CACHE BOOL "Disable FluidSynth" FORCE)
-	set(SDL2MIXER_WAVPACK OFF CACHE BOOL "Disable WavPack" FORCE)
-	set(SDL2MIXER_INSTALL OFF CACHE BOOL "Disable SDL_mixer installation" FORCE)
-
-	FetchContent_MakeAvailable(SDL2_mixer)
-	set(SDL2_MIXER_INCLUDE_DIRS ${SDL2_mixer_SOURCE_DIR}/include)
-	set(SDL2_MIXER_LIBRARIES SDL2_mixer::SDL2_mixer-static)
-
-	add_definitions(-DUSE_SDL_MIXER=1)
-endif(ENABLE_SOUND MATCHES "BUNDLED")
-
 if(ENABLE_FLUIDSYNTH MATCHES "ON")
 	find_package(PkgConfig)
     pkg_check_modules(fluidsynth REQUIRED IMPORTED_TARGET fluidsynth)
@@ -266,7 +313,6 @@ if(ENABLE_FLUIDSYNTH MATCHES "BUNDLED")
 endif(ENABLE_FLUIDSYNTH MATCHES "BUNDLED")
 
 include_directories(
-	${SDL2_MIXER_INCLUDE_DIRS}
 	${FLUIDSYNTH_INCLUDE_DIRS}
 	${OPENGL_INCLUDE_DIRS}
 )
@@ -476,11 +522,13 @@ target_link_libraries(systemshock PRIVATE
     # UH-OH breaking a bunch of static linking stuff from upstream! I just want
     # it to build for me for now. And static vs shared deps should be
     # configurable anyway.
-    SDL2_mixer::SDL2_mixer
     PkgConfig::fluidsynth
 	${OPENGL_LIBRARIES}
 	${ALSA_LIBRARIES}
 )
+if(SHOCK_ENABLE_SOUND)
+    target_link_libraries(systemshock PRIVATE dep_SDL2_mixer)
+endif()
 
 # Turn on address sanitizing if wanted
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/externals/sanitizers/cmake" ${CMAKE_MODULE_PATH})
