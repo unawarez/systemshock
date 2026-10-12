@@ -1,86 +1,72 @@
 name: Main Build
 on:
+  workflow_dispatch:
   push:
   pull_request:
 permissions:
   contents: read
 jobs:
-  build:
-    name: ${{matrix.os}} - ${{matrix.arch}}
-    runs-on: ${{matrix.runner}}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Linux builds
-          - os: linux
-            arch: x86-64
-            runner: ubuntu-22.04
-            toolchain_file: 'x86-64-gcc.cmake'
-            extra_packages: 'gcc g++ mesa-utils mesa-common-dev xorg-dev libxrandr-dev'
 
-          - os: linux
-            arch: i686
-            runner: ubuntu-22.04
-            toolchain_file: 'i686-gcc.cmake'
-            extra_packages: 'gcc-multilib g++-multilib mesa-utils mesa-common-dev:i386 xorg-dev libxrandr-dev'
-
-          # Windows builds
-          - os: mswin
-            arch: x86-64
-            runner: ubuntu-22.04
-            toolchain_file: 'x86-64-w64-mingw32.cmake'
-            extra_packages: 'gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64'
-
-          - os: mswin
-            arch: i686
-            runner: ubuntu-22.04
-            toolchain_file: 'i686-w64-mingw32.cmake'
-            extra_packages: 'gcc-mingw-w64-i686 g++-mingw-w64-i686'
-
-          # macOS builds (native compilation)
-          # Disabled build because of alignment issues during linking.
-          #- os: macos
-          #  arch: arm64
-          #  runner: macos-14
+  # Build check only. Shipping a bare binary that touches graphics in any way
+  # is pretty likely to break outside of the distro it was built on.
+  linux:
+    name: Linux
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-
-      - name: Install build dependencies (Linux)
-        if: runner.os == 'linux'
+      - uses: lukka/get-cmake@latest
+      - name: Install build dependencies
         run: |
-          sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y cmake ${{ matrix.extra_packages }}
-
-      - name: Install build dependencies (macOS)
-        if: runner.os == 'macos'
-        run: |
-          brew uninstall cmake
-          wget -q https://github.com/Kitware/CMake/releases/download/v3.31.12/cmake-3.31.12-macos-universal.tar.gz
-          tar -xzf cmake-3.31.12-macos-universal.tar.gz
-          sudo cp -r cmake-3.31.12-macos-universal/CMake.app /Applications/
-          echo "/Applications/CMake.app/Contents/bin" >> $GITHUB_PATH
-          brew install ninja
-
-      - name: Generate build files
-        run: >
-          cmake 
-          -B build 
-          -S . 
-          -G Ninja
-          -DCMAKE_BUILD_TYPE=RelWithDebInfo 
-          ${{ matrix.toolchain_file && format('-DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/{0}', matrix.toolchain_file) || '' }}
-
+          sudo apt-get install -y libasound2-dev libgl-dev libopengl-dev xorg-dev
+      - name: Configure
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: Build
-        run: cmake --build build -j $(sysctl -n hw.logicalcpu || nproc)
+        run: cmake --build build
+      - name: Smoketest
+        run: build/systemshock -h
 
-      - name: Prepare distribution package
+  # Build check only for now. Could in theory distribute an app bundle.
+  macos:
+    name: macOS
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@v7
+      - uses: lukka/get-cmake@latest
+      - name: Configure
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - name: Build
+        run: cmake --build build
+      - name: Smoketest
+        run: build/systemshock -h
+
+  # Windows build uses MSYS because the code is (probably(?)) not
+  # MSVC-compatible.
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: git
+          pacboy: gcc:p cmake:p ninja:p
+      - name: Configure
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - name: Build
+        run: cmake --build build
+      - name: Install
         run: cmake --install build --prefix dist
-
-      - name: Upload Build Artifacts
+      - name: Smoketest
+        run: dist/systemshock.exe
+      - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
-          name: systemshock-${{ matrix.os }}-${{ matrix.arch }}
+          name: systemshock-windows-x86-64
           path: dist/
-          if-no-files-found: warn
+          if-no-files-found: error

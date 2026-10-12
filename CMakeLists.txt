@@ -152,7 +152,11 @@ if(SHOCK_ENABLE_OPENGL)
 			SOURCE_SUBDIR build/cmake
 			EXCLUDE_FROM_ALL
 		)
-		FetchContent_MakeAvailable(GLEW)
+		block()
+			# GLEW 2.1.0's cmake_minimum_required is too old for CMake 4.
+			set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+			FetchContent_MakeAvailable(GLEW)
+		endblock()
 
 		message("GLEW src-dir '${glew_SOURCE_DIR}'")
 		message("GLEW bin-dir '${glew_BINARY_DIR}'")
@@ -180,6 +184,8 @@ if(SHOCK_ENABLE_SOUND)
             )
             block()
                 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+                # fluidsynth-lite's cmake_minimum_required is too old for CMake 4.
+                set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
                 set(BUILD_SHARED_LIBS "${dep_shared}")
                 # if ( WIN32 )
                 #     # Sadly, FluidSynth-Lite has its CMakeLists.txt hardcoded to make its functions as exports.
@@ -197,6 +203,11 @@ if(SHOCK_ENABLE_SOUND)
                     # where it initializes idlist.
                     target_compile_options(libfluidsynth PRIVATE -Wno-error=unterminated-string-initialization)
                 endif()
+                # libfluidsynth doesn't export its include dirs (one is generated).
+                target_include_directories(dep_feature_sound SYSTEM INTERFACE
+                    "${fluidsynth_SOURCE_DIR}/include"
+                    "${fluidsynth_BINARY_DIR}/include"
+                )
             endblock()
             target_link_libraries(dep_feature_sound INTERFACE libfluidsynth)
         else()
@@ -469,10 +480,21 @@ endif()
 # Install rules (HILARIOUSLY BROKEN RN)
 ###############################################################################
 
-install(TARGETS systemshock
-	RUNTIME DESTINATION .
-)
-
+if(MINGW)
+	# Quick hack that needs to be generalized.
+	cmake_path(GET CMAKE_C_COMPILER PARENT_PATH mingw_bin_dir)
+	install(TARGETS systemshock
+		RUNTIME_DEPENDENCIES
+			PRE_EXCLUDE_REGEXES "^[Aa][Pp][Ii]-[Mm][Ss]-" "^[Ee][Xx][Tt]-[Mm][Ss]-"
+			POST_EXCLUDE_REGEXES "[Ss][Yy][Ss][Tt][Ee][Mm]32"
+			DIRECTORIES "${mingw_bin_dir}"
+		RUNTIME DESTINATION .
+	)
+else()
+	install(TARGETS systemshock
+		RUNTIME DESTINATION .
+	)
+endif()
 install(FILES
 	${CMAKE_SOURCE_DIR}/README.md
 	DESTINATION .
