@@ -49,6 +49,12 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
+      # Fix VCS version string always saying dirty.
+      # Checkout uses the runner's Git for Windows (autocrlf=true), but the
+      # build uses MSYS2's git, which then sees every CRLF file as modified.
+      - name: Disable CRLF conversion
+        shell: pwsh
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v7
       - uses: msys2/setup-msys2@v2
         with:
@@ -63,7 +69,7 @@ jobs:
       - name: Install
         run: cmake --install build --prefix dist
       - name: Smoketest
-        run: dist/systemshock.exe
+        run: dist/systemshock.exe -h
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:

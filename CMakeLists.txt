@@ -162,7 +162,7 @@ if(SHOCK_ENABLE_OPENGL)
 		message("GLEW bin-dir '${glew_BINARY_DIR}'")
 
         target_include_directories(dep_opengl INTERFACE "${glew_SOURCE_DIR}/include")
-        target_link_libraries(dep_opengl glew_s winmm)
+        target_link_libraries(dep_opengl INTERFACE glew_s winmm)
 	endif(WIN32)
 endif()
 
