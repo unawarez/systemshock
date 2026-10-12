@@ -176,6 +176,33 @@ else()
 endif()
 target_link_libraries(dep_SDL2main INTERFACE SDL2::SDL2main)
 
+# OpenGL
+if(SHOCK_ENABLE_OPENGL)
+    add_library(dep_opengl INTERFACE)
+    find_package(OpenGL REQUIRED)
+    target_link_libraries(dep_opengl INTERFACE OpenGL::GL)
+    target_compile_definitions(dep_opengl INTERFACE USE_OPENGL=1)
+    if(APPLE)
+        target_compile_definitions(dep_opengl INTERFACE GL_SILENCE_DEPRECATION)
+    endif()
+	if(WIN32)
+		SET(GLEW_version 2.1.0)
+		FetchContent_Declare(
+			glew
+			URL https://sourceforge.net/projects/glew/files/glew/${GLEW_version}/glew-${GLEW_version}.tgz
+			SOURCE_SUBDIR build/cmake
+			EXCLUDE_FROM_ALL
+		)
+		FetchContent_MakeAvailable(GLEW)
+
+		message("GLEW src-dir '${glew_SOURCE_DIR}'")
+		message("GLEW bin-dir '${glew_BINARY_DIR}'")
+
+        target_include_directories(dep_opengl INTERFACE "${glew_SOURCE_DIR}/include")
+        target_link_libraries(dep_opengl glew_s winmm)
+	endif(WIN32)
+endif()
+
 if(SHOCK_ENABLE_SOUND)
     # meta-target that collects all required + optional sound stuff
     add_library(dep_feature_sound INTERFACE)
@@ -309,32 +336,6 @@ if(SHOCK_ENABLE_DEBUG_BLIT)
 endif()
 
 add_compile_options(-fsigned-char -fno-strict-aliasing)
-
-# Find OpenGL
-if(SHOCK_ENABLE_OPENGL)
-	find_package(OpenGL REQUIRED)
-	add_definitions(-DUSE_OPENGL)
-	if(WIN32)
-		SET(GLEW_version 2.1.0)
-		FetchContent_Declare(
-			glew
-			URL https://sourceforge.net/projects/glew/files/glew/${GLEW_version}/glew-${GLEW_version}.tgz
-			SOURCE_SUBDIR build/cmake
-			EXCLUDE_FROM_ALL
-		)
-		FetchContent_MakeAvailable(GLEW)
-
-		message("GLEW src-dir '${glew_SOURCE_DIR}'")
-		message("GLEW bin-dir '${glew_BINARY_DIR}'")
-
-		list(APPEND OPENGL_INCLUDE_DIRS ${glew_SOURCE_DIR}/include)
-		list(APPEND OPENGL_LIBRARIES glew_s winmm)
-	endif(WIN32)
-endif()
-
-include_directories(
-	${OPENGL_INCLUDE_DIRS}
-)
 
 # Append git commit to version string
 find_package(Git)
@@ -509,9 +510,6 @@ target_embedded_shaders_c(systemshock generated/embedded-shaders.c.inc
     shaders/texture.frag
 )
 target_precompile_headers(systemshock PUBLIC src/GameSrc/Headers/precompiled.h)
-if(APPLE)
-    target_compile_definitions(systemshock PRIVATE GL_SILENCE_DEPRECATION)
-endif()
 target_link_libraries(systemshock PRIVATE
     shockLG
     shockRES
@@ -526,8 +524,10 @@ target_link_libraries(systemshock PRIVATE
     shockAFILE
     shockADLMIDI
     dep_SDL2main dep_SDL2
-	${OPENGL_LIBRARIES}
 )
+if(SHOCK_ENABLE_OPENGL)
+    target_link_libraries(systemshock PRIVATE dep_opengl)
+endif()
 if(SHOCK_ENABLE_SOUND)
     target_link_libraries(systemshock PRIVATE dep_feature_sound)
 endif()
