@@ -184,11 +184,6 @@ if(SHOCK_ENABLE_SOUND)
                 # fluidsynth-lite's cmake_minimum_required is too old for CMake 4.
                 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
                 set(BUILD_SHARED_LIBS "${dep_shared}")
-                # if ( WIN32 )
-                #     # Sadly, FluidSynth-Lite has its CMakeLists.txt hardcoded to make its functions as exports.
-                #     # Idea: Modify CMakeLists.txt as part of this block here?
-                #     set(BUILD_SHARED_LIBS TRUE CACHE BOOL "Force shared libs for FluidSynth on Windows" FORCE)
-                # endif ( WIN32 )
                 FetchContent_MakeAvailable(FluidSynth)
                 # fluidsynth-lite unconditionally adds -Werror, so every new
                 # compiler warning breaks the build. Undo it.
@@ -200,6 +195,10 @@ if(SHOCK_ENABLE_SOUND)
                 )
             endblock()
             target_link_libraries(dep_feature_sound INTERFACE libfluidsynth)
+            if(dep_static)
+                # dumb cmakelists bug
+                target_compile_definitions(dep_feature_sound INTERFACE FLUIDSYNTH_NOT_A_DLL)
+            endif()
         else()
             if(dep_shared)
                 find_package(FluidSynth REQUIRED COMPONENTS shared)
