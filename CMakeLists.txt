@@ -4,66 +4,25 @@ project(shockolate VERSION 0.7.8)
 # compromise for denoting this is a fork. Should I change the project name
 # instead? Maybe.
 set(SHOCKOLATE_VERSION_STRING "${PROJECT_VERSION}+unawarez0")
-# This var gets appended later with `-g<git commit hash>`!
-
-# `choice` creates a cache var with attached "allowed" set of string values
-# (note CMake doesn't validate these).
-# Usage:
-#   choice(<var name> "description"
-#       CHOICES <choice strings>...
-#       VALUE <default value>
-#   )
-function(choice name desc)
-    cmake_parse_arguments(PARSE_ARGV 2 arg
-        # flags
-        ""
-        # single-value
-        "VALUE"
-        # multi-value
-        "CHOICES"
-    )
-    # auto-append choices to description:
-    list(JOIN arg_CHOICES "/" desc_choices)
-    set("${name}" "${arg_VALUE}" CACHE STRING "${desc} (${desc_choices})")
-    set_property(CACHE "${name}" PROPERTY STRINGS ${arg_CHOICES})
-endfunction()
-
-# Plumbing for FeatureSummary. Note this is not enough for showing some
-# important non-bool info; may or may not be replaced.
-include(FeatureSummary)
-# `foption` is `option` but also duplicates it into FeatureSummary.
-function(foption name desc)
-    option("${name}" "${desc}" ${ARGN})
-    add_feature_info("${name}" "${name}" "${desc}")
-endfunction()
-# `fset` is `set(... CACHE ...)` but also shows it as an enabled feature in
-# FeatureSummary if the var is truthy. You *must* pass CACHE in the args or
-# else the feature part will get confused trying to extract the description
-# text. (The new freeform `set(CACHE{var})` syntax isn't available until 4.2,
-# but that would help.)
-# macro(fset name)
-#     set("${name}" ${ARGN})
-#     # set(<variable> <value>... CACHE <type> <docstring> [FORCE])
-#     list(GET ARGN -1 desc)
-#     if(desc STREQUAL FORCE)
-#         list(GET ARGN -2 desc)
-#     endif()
-#     add_feature_info("${name}" "${name}" "${desc}")
-# endmacro()
+include(cmake/version_append_git_commit.cmake)
+version_append_git_commit(SHOCKOLATE_VERSION_STRING)
+message(STATUS "Version is ${SHOCKOLATE_VERSION_STRING}")
+configure_file("${CMAKE_SOURCE_DIR}/src/GameSrc/Headers/shockolate_version.h.in"
+    "${CMAKE_BINARY_DIR}/generated/shockolate_version.h" )
 
 ###############################################################################
 # External options
 ###############################################################################
-
+include(cmake/options_plumbing.cmake)
 # Main features
 foption(SHOCK_ENABLE_OPENGL "Enable OpenGL renderer" ON)
 foption(SHOCK_ENABLE_SOUND "Enable sound (requires SDL2_mixer)" ON)
 foption(SHOCK_ENABLE_SOUND_FLUIDSYNTH "Enable FluidSynth MIDI playback" ON)
 foption(SHOCK_ENABLE_SOUND_ALSA "Enable ALSA MIDI playback on Linux" ON)
 # Dev stuff
-foption(SHOCK_ENABLE_DEBUG_BLIT "Enable debugging blitter" OFF)
+foption(SHOCK_ENABLE_DEBUGGING_BLIT "Enable debugging blitter" OFF)
 
-# Dependency control options
+# Dependency controls
 option(SHOCK_DEPS_DEFAULT_STATIC
     "Static link to dependencies (can be overridden per dependency)"
     ON
@@ -309,10 +268,12 @@ if(SHOCK_ENABLE_SOUND)
 
 endif()
 
-
+# Configuration done. Print features
+feature_summary(WHAT ENABLED_FEATURES DESCRIPTION "Enabled features:")
+feature_summary(WHAT DISABLED_FEATURES DESCRIPTION "Disabled features:")
 
 ###############################################################################
-# Stuff
+# Actual build stuff
 ###############################################################################
 
 # C/C++ config:
@@ -325,47 +286,11 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_LANGUAGE_EXTENSIONS OFF)
 
-# To keep a minimum dependency list, any created library should be static, even third-party dependencies.
-set(BUILD_SHARED_LIBS FALSE CACHE BOOL "Force creation of static libraries, globally" FORCE)
-
-# HAAAAX!!
-add_definitions(-DSVGA_SUPPORT)
-
-if(SHOCK_ENABLE_DEBUG_BLIT)
-	add_definitions(-DDEBUGGING_BLIT)
-endif()
-
+# Codebase was written with these assumptions:
 add_compile_options(-fsigned-char -fno-strict-aliasing)
-
-# Append git commit to version string
-find_package(Git)
-if(GIT_FOUND)
-    # --exclude=* ignores tags, so the output is always just the commit hash
-    execute_process(COMMAND ${GIT_EXECUTABLE} describe --always --dirty --exclude=*
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        OUTPUT_VARIABLE git_describe_out
-        ERROR_VARIABLE git_describe_error
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        RESULT_VARIABLE git_describe_result
-    )
-    if(git_describe_result EQUAL 0)
-        string(APPEND SHOCKOLATE_VERSION_STRING "-g${git_describe_out}")
-    else()
-        message(WARNING "git describe failed: ${git_describe_error}")
-    endif()
-endif(GIT_FOUND)
-
-message(STATUS "Version is ${SHOCKOLATE_VERSION_STRING}")
-configure_file("${CMAKE_SOURCE_DIR}/src/GameSrc/Headers/shockolate_version.h.in"
-    "${CMAKE_BINARY_DIR}/generated/shockolate_version.h" )
-
-# Configuration done. Print features
-feature_summary(WHAT ENABLED_FEATURES DESCRIPTION "Enabled features:")
-feature_summary(WHAT DISABLED_FEATURES DESCRIPTION "Disabled features:")
 
 include(cmake/shaders.cmake)
 
-# Sources configuration
 add_subdirectory(src/Libraries/)
 
 # MacSrc and GameSrc circularly depend on each other. Thus GAME_LIB was a lie.
@@ -498,18 +423,26 @@ add_executable(systemshock WIN32
 	src/MacSrc/Xmi.c
 	src/MusicSrc/MusicDevice.c
 )
-target_include_directories(systemshock PUBLIC
-    src/GameSrc/Headers
-    src/MacSrc
-    src/MusicSrc
-    ${CMAKE_BINARY_DIR}/generated)
 target_embedded_shaders_c(systemshock generated/embedded-shaders.c.inc
     shaders/main.vert
     shaders/color.frag
     shaders/star.frag
     shaders/texture.frag
 )
+
+target_include_directories(systemshock PUBLIC
+    src/GameSrc/Headers
+    src/MacSrc
+    src/MusicSrc
+    ${CMAKE_BINARY_DIR}/generated)
+# defined in lg.h, only consumed in GameSrc, but lots of files have a reckless
+# assumption that a precompiled header will bring lg.h in scope for them, so:
+target_compile_definitions(systemshock PRIVATE SVGA_SUPPORT)
+if(SHOCK_ENABLE_DEBUGGING_BLIT)
+    target_compile_definitions(systemshock PRIVATE DEBUGGING_BLIT)
+endif()
 target_precompile_headers(systemshock PUBLIC src/GameSrc/Headers/precompiled.h)
+
 target_link_libraries(systemshock PRIVATE
     shockLG
     shockRES
@@ -537,13 +470,13 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/externals/sanitizers/cmake" ${CMAKE_M
 find_package(Sanitizers)
 add_sanitizers(systemshock)
 
-# --- Installation Rules ---
+###############################################################################
+# Install rules (HILARIOUSLY BROKEN RN)
+###############################################################################
 
 install(TARGETS systemshock
 	RUNTIME DESTINATION .
 )
-# TODO install is absolutely broken; needs RUNTIME_DEPENDENCIES or some more
-# complex version of that.
 
 # Toolchains may define extra libraries that should be included in the distribution.
 # This is primarily for MinGW, which needs some runtime libraries along with it.

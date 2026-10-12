@@ -4,7 +4,7 @@
 # themselves are mostly not separated into header folders, so it would take
 # reversing to find public vs private API in each library. If you go to that
 # effort, you should move the public header files out of the Source folders.
-add_library(shockLG
+add_library(shockLG STATIC
 	LG/Source/LOG/src/log.c
 	LG/Source/memall.c
 	LG/Source/stack.c
@@ -12,7 +12,7 @@ add_library(shockLG
 )
 target_include_directories(shockLG PUBLIC H LG/Source LG/Source/LOG/src)
 
-add_library(shockFIX
+add_library(shockFIX STATIC
 	FIX/Source/f_exp.c
 	FIX/Source/fix.c
 	FIX/Source/fix_pow.c
@@ -22,7 +22,7 @@ add_library(shockFIX
 target_include_directories(shockFIX PUBLIC FIX/Source)
 target_link_libraries(shockFIX shockLG m)
 
-add_library(shock2D
+add_library(shock2D STATIC
 	2D/Source/bit.c
 	2D/Source/bitmap.c
 	2D/Source/blend.c
@@ -183,7 +183,7 @@ target_include_directories(shock2D PUBLIC
 )
 target_link_libraries(shock2D shockLG shockFIX)
 
-add_library(shock3D
+add_library(shock3D STATIC
 	3D/Source/alloc.c
 	3D/Source/Bitmap.c
 	3D/Source/clip.c
@@ -208,7 +208,7 @@ target_include_directories(shock3D PRIVATE ../MacSrc)
 target_link_libraries(shock3D dep_SDL2)
 target_link_libraries(shock3D shock2D m)
 
-add_library(shockRES
+add_library(shockRES STATIC
 	RES/Source/caseless.c
 	RES/Source/lzw.c
 	RES/Source/refacc.c
@@ -224,7 +224,7 @@ add_library(shockRES
 target_include_directories(shockRES PUBLIC RES/Source)
 target_link_libraries(shockRES shockLG shock2D dep_SDL2)
 
-add_library(shockDSTRUCT
+add_library(shockDSTRUCT STATIC
 	DSTRUCT/Source/array.c
 	DSTRUCT/Source/hash.c
 	DSTRUCT/Source/pqueue.c
@@ -233,7 +233,7 @@ add_library(shockDSTRUCT
 target_include_directories(shockDSTRUCT PUBLIC DSTRUCT/Source)
 target_link_libraries(shockDSTRUCT shockLG)
 
-add_library(shockINPUT
+add_library(shockINPUT STATIC
 	INPUT/Source/kbcook.c
 	INPUT/Source/mouse.c
 	INPUT/Source/sdl_events.c
@@ -243,7 +243,7 @@ target_include_directories(shockINPUT PUBLIC INPUT/Source)
 target_include_directories(shockINPUT PRIVATE ../MacSrc ../GameSrc/Headers)
 target_link_libraries(shockINPUT shockLG shock3D dep_SDL2)
 
-add_library(shockUI
+add_library(shockUI STATIC
 	UI/Source/curdrw.c
 	UI/Source/cursors.c
 	UI/Source/event.c
@@ -259,13 +259,13 @@ add_library(shockSND INTERFACE)
 # nothing but a header file
 target_include_directories(shockSND INTERFACE SND/Source)
 
-add_library(shockFIXPP
+add_library(shockFIXPP STATIC
 	FIXPP/Source/fixpp.cpp
 )
 target_include_directories(shockFIXPP PUBLIC FIXPP/Source)
 target_link_libraries(shockFIXPP shockFIX)
 
-add_library(shockEDMS
+add_library(shockEDMS STATIC
 	EDMS/Source/interfac.cc
 	EDMS/Source/collide.cc
 	EDMS/Source/intrsect.cc
@@ -284,19 +284,19 @@ add_library(shockEDMS
 target_include_directories(shockEDMS PUBLIC EDMS/Source EDMS/Source/MODELS)
 target_link_libraries(shockEDMS shockFIXPP)
 
-add_library(shockRND
+add_library(shockRND STATIC
 	RND/Source/rnd.c
 )
 target_include_directories(shockRND PUBLIC RND/Source)
 target_link_libraries(shockRND shockLG shockFIX)
 
-add_library(shockPALETTE
+add_library(shockPALETTE STATIC
 	PALETTE/Source/palette.c
 )
 target_include_directories(shockPALETTE PUBLIC PALETTE/Source)
 target_link_libraries(shockPALETTE shockLG shock2D shockFIX)
 
-add_library(shockVOX
+add_library(shockVOX STATIC
 	VOX/Source/vox2d.c
 	VOX/Source/vox3d.c
 	VOX/Source/voxinit.c
@@ -304,7 +304,7 @@ add_library(shockVOX
 target_include_directories(shockVOX PUBLIC VOX/Source)
 target_link_libraries(shockVOX shockLG shock2D shock3D)
 
-add_library(shockAFILE
+add_library(shockAFILE STATIC
 	AFILE/Source/afile.c
 	AFILE/Source/amov.c
 	AFILE/Source/compose.c
@@ -314,7 +314,7 @@ add_library(shockAFILE
 target_link_libraries(shockAFILE shock2D shockRES shockDSTRUCT)
 target_include_directories(shockAFILE PUBLIC AFILE/Source)
 
-add_library(shockADLMIDI
+add_library(shockADLMIDI STATIC
 	adlmidi/adlmidi_sequencer.cpp
 	adlmidi/adlmidi_bankmap.tcc
 	adlmidi/cvt_mus2mid.hpp
