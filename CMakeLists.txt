@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.29)
 project(shockolate VERSION 0.7.8)
 # CMake can't handle suffixes in the project version, so this variable is my
 # compromise for denoting this is a fork. Should I change the project name
