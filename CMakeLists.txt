@@ -193,16 +193,9 @@ if(SHOCK_ENABLE_SOUND)
                 #     set(BUILD_SHARED_LIBS TRUE CACHE BOOL "Force shared libs for FluidSynth on Windows" FORCE)
                 # endif ( WIN32 )
                 FetchContent_MakeAvailable(FluidSynth)
-                if(APPLE)
-                    # This is a necessary hack; compiler errors for various things.
-                    target_compile_options(libfluidsynth PRIVATE -Wno-error=single-bit-bitfield-constant-conversion -Wno-unused-but-set-variable)
-                endif()
-                if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 15)
-                    # This is a necessary hack; gcc-15 warns (errors) if a static array is initialized
-                    # with a string that exceeds its storage. This is the case for fluid_defsfont.c,
-                    # where it initializes idlist.
-                    target_compile_options(libfluidsynth PRIVATE -Wno-error=unterminated-string-initialization)
-                endif()
+                # fluidsynth-lite unconditionally adds -Werror, so every new
+                # compiler warning breaks the build. Undo it.
+                target_compile_options(libfluidsynth PRIVATE -Wno-error)
                 # libfluidsynth doesn't export its include dirs (one is generated).
                 target_include_directories(dep_feature_sound SYSTEM INTERFACE
                     "${fluidsynth_SOURCE_DIR}/include"
