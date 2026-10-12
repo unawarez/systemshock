@@ -103,8 +103,8 @@ if(dep_fetch)
     set(SDL_VERSION 2.32.10)
     FetchContent_Declare(
         SDL2
-        GIT_REPOSITORY https://github.com/libsdl-org/SDL
-        GIT_TAG "release-${SDL_VERSION}"
+        URL "https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VERSION}/SDL2-${SDL_VERSION}.tar.gz"
+        URL_HASH SHA256=5f5993c530f084535c65a6879e9b26ad441169b3e25d789d83287040a9ca5165
         EXCLUDE_FROM_ALL
         # SYSTEM is extra important because on case-insensitive filesystems
         # `#include "sdl_events.h"` will hit a conflict between
@@ -149,6 +149,7 @@ if(SHOCK_ENABLE_OPENGL)
 		FetchContent_Declare(
 			glew
 			URL https://sourceforge.net/projects/glew/files/glew/${GLEW_version}/glew-${GLEW_version}.tgz
+			URL_HASH SHA256=04de91e7e6763039bc11940095cd9c7f880baba82196a7765f727ac05a993c95
 			SOURCE_SUBDIR build/cmake
 			EXCLUDE_FROM_ALL
 		)
@@ -176,8 +177,8 @@ if(SHOCK_ENABLE_SOUND)
             set(FLUIDSYNTH_REVISION c539a8d9270ba5a3f7d6e460606483fc2ab1eb61)
             FetchContent_Declare(
                 FluidSynth
-                GIT_REPOSITORY https://github.com/EtherTyper/fluidsynth-lite.git
-                GIT_TAG ${FLUIDSYNTH_REVISION}
+                URL "https://github.com/EtherTyper/fluidsynth-lite/archive/${FLUIDSYNTH_REVISION}.tar.gz"
+                URL_HASH SHA256=97105732a338919fe2cb3d1596cf0d34353d7a70b41d110dfb2ad1d083d74d3e
                 EXCLUDE_FROM_ALL
                 SYSTEM
                 OVERRIDE_FIND_PACKAGE
@@ -232,8 +233,8 @@ if(SHOCK_ENABLE_SOUND)
         SET(SDL_MIXER_VERSION 2.8.2)
         FetchContent_Declare(
             SDL2_mixer
-            GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
-            GIT_TAG release-${SDL_MIXER_VERSION}
+            URL "https://github.com/libsdl-org/SDL_mixer/releases/download/release-${SDL_MIXER_VERSION}/SDL2_mixer-${SDL_MIXER_VERSION}.tar.gz"
+            URL_HASH SHA256=938dff531d00ace2296557a6599abe6f34599e2f34f0a4a08a397e2ccac8b8f7
             EXCLUDE_FROM_ALL
             SYSTEM
             OVERRIDE_FIND_PACKAGE
