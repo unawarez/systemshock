@@ -157,12 +157,8 @@ if(SHOCK_ENABLE_OPENGL)
 			# GLEW 2.1.0's cmake_minimum_required is too old for CMake 4.
 			set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 			FetchContent_MakeAvailable(GLEW)
+			target_include_directories(dep_opengl INTERFACE "${glew_SOURCE_DIR}/include")
 		endblock()
-
-		message("GLEW src-dir '${glew_SOURCE_DIR}'")
-		message("GLEW bin-dir '${glew_BINARY_DIR}'")
-
-        target_include_directories(dep_opengl INTERFACE "${glew_SOURCE_DIR}/include")
         target_link_libraries(dep_opengl INTERFACE glew_s winmm)
 	endif(WIN32)
 endif()
@@ -197,7 +193,7 @@ if(SHOCK_ENABLE_SOUND)
                 # fluidsynth-lite unconditionally adds -Werror, so every new
                 # compiler warning breaks the build. Undo it.
                 target_compile_options(libfluidsynth PRIVATE -Wno-error)
-                # libfluidsynth doesn't export its include dirs (one is generated).
+                # libfluidsynth doesn't export its include dirs.
                 target_include_directories(dep_feature_sound SYSTEM INTERFACE
                     "${fluidsynth_SOURCE_DIR}/include"
                     "${fluidsynth_BINARY_DIR}/include"
@@ -255,7 +251,7 @@ if(SHOCK_ENABLE_SOUND)
             # a strong chance MIDI should be fully disabled.
             set(SDL2MIXER_MIDI_FLUIDSYNTH OFF)
             set(SDL2MIXER_OPUS OFF)
-            set(SDL2MIXER_VORBIS "") # not clear if this even works
+            set(SDL2MIXER_VORBIS "") # not clear if this actually disables it
             set(SDL2MIXER_WAVE OFF)
             set(SDL2MIXER_WAVPACK OFF)
             FetchContent_MakeAvailable(SDL2_mixer)
@@ -440,8 +436,8 @@ target_include_directories(systemshock PUBLIC
     src/MacSrc
     src/MusicSrc
     ${CMAKE_BINARY_DIR}/generated)
-# defined in lg.h, only consumed in GameSrc, but lots of files have a reckless
-# assumption that a precompiled header will bring lg.h in scope for them, so:
+# SVGA_SUPPORT is defined in lg.h, only consumed in GameSrc, but lots of files
+# have a reckless dependence on PCH to bring lg.h in scope for them, so:
 target_compile_definitions(systemshock PRIVATE SVGA_SUPPORT)
 if(SHOCK_ENABLE_DEBUGGING_BLIT)
     target_compile_definitions(systemshock PRIVATE DEBUGGING_BLIT)
