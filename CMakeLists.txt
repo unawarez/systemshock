@@ -58,6 +58,8 @@ endfunction()
 # Main features
 foption(SHOCK_ENABLE_OPENGL "Enable OpenGL renderer" ON)
 foption(SHOCK_ENABLE_SOUND "Enable sound (requires SDL2_mixer)" ON)
+foption(SHOCK_ENABLE_SOUND_FLUIDSYNTH "Enable FluidSynth MIDI playback" ON)
+foption(SHOCK_ENABLE_SOUND_ALSA "Enable ALSA MIDI playback on Linux" ON)
 # Dev stuff
 foption(SHOCK_ENABLE_DEBUG_BLIT "Enable debugging blitter" OFF)
 
@@ -93,6 +95,7 @@ dep_options(SDL2 SDL2)
 # Double-also, we propagate SDL2_mixer fetch/system into SDL2MIXER_VENDORED to
 # control fetch for its dependencies.
 dep_options(SDL2_mixer SDL2_mixer)
+dep_options(FluidSynth FluidSynth)
 
 ###############################################################################
 # Dependency setup
@@ -174,8 +177,67 @@ endif()
 target_link_libraries(dep_SDL2main INTERFACE SDL2::SDL2main)
 
 if(SHOCK_ENABLE_SOUND)
+    # meta-target that collects all required + optional sound stuff
+    add_library(dep_feature_sound INTERFACE)
+
+    if(SHOCK_ENABLE_SOUND_FLUIDSYNTH)
+        resolve_dep_vars(FluidSynth)
+        if(dep_fetch)
+            set(FLUIDSYNTH_REVISION c539a8d9270ba5a3f7d6e460606483fc2ab1eb61)
+            FetchContent_Declare(
+                FluidSynth
+                GIT_REPOSITORY https://github.com/EtherTyper/fluidsynth-lite.git
+                GIT_TAG ${FLUIDSYNTH_REVISION}
+                EXCLUDE_FROM_ALL
+                SYSTEM
+                OVERRIDE_FIND_PACKAGE
+            )
+            block()
+                set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+                set(BUILD_SHARED_LIBS "${dep_shared}")
+                # if ( WIN32 )
+                #     # Sadly, FluidSynth-Lite has its CMakeLists.txt hardcoded to make its functions as exports.
+                #     # Idea: Modify CMakeLists.txt as part of this block here?
+                #     set(BUILD_SHARED_LIBS TRUE CACHE BOOL "Force shared libs for FluidSynth on Windows" FORCE)
+                # endif ( WIN32 )
+                FetchContent_MakeAvailable(FluidSynth)
+                if(APPLE)
+                    # This is a necessary hack; compiler errors for various things.
+                    target_compile_options(libfluidsynth PRIVATE -Wno-error=single-bit-bitfield-constant-conversion -Wno-unused-but-set-variable)
+                endif()
+                if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 15)
+                    # This is a necessary hack; gcc-15 warns (errors) if a static array is initialized
+                    # with a string that exceeds its storage. This is the case for fluid_defsfont.c,
+                    # where it initializes idlist.
+                    target_compile_options(libfluidsynth PRIVATE -Wno-error=unterminated-string-initialization)
+                endif()
+            endblock()
+            target_link_libraries(dep_feature_sound INTERFACE libfluidsynth)
+        else()
+            if(dep_shared)
+                find_package(FluidSynth REQUIRED COMPONENTS shared)
+            else()
+                find_package(FluidSynth REQUIRED COMPONENTS static)
+            endif()
+            target_link_libraries(dep_feature_sound INTERFACE FluidSynth::libfluidsynth)
+        endif()
+        target_compile_definitions(dep_feature_sound INTERFACE USE_FLUIDSYNTH=1)
+    endif()
+
+    if(LINUX AND SHOCK_ENABLE_SOUND_ALSA)
+      # Find ALSA for Linux native MIDI
+      # NOTE: this seems to require having 64-bit dev pacakges installed when building
+      #  on 64-bit OS, even when building a 32-bit binary
+      find_package(ALSA REQUIRED)
+      target_link_libraries(dep_feature_sound INTERFACE ALSA::ALSA)
+      target_compile_definitions(dep_feature_sound INTERFACE USE_ALSA=1)
+    endif()
+
+    # SDL2_mixer CMakeLists contains some fun shit that breaks
+    # find_package(FluidSynth), so **FluidSynth setup must come before
+    # sdl2_mixer setup!** In fact it might break other packages too. Maybe just
+    # try to keep it at the end.
     resolve_dep_vars(SDL2_mixer)
-    add_library(dep_SDL2_mixer INTERFACE)
     if(dep_fetch)
         SET(SDL_MIXER_VERSION 2.8.2)
         FetchContent_Declare(
@@ -212,11 +274,12 @@ if(SHOCK_ENABLE_SOUND)
         find_package(SDL2_mixer REQUIRED)
     endif()
     if(dep_static)
-        target_link_libraries(dep_SDL2_mixer INTERFACE SDL2_mixer::SDL2_mixer-static)
+        target_link_libraries(dep_feature_sound INTERFACE SDL2_mixer::SDL2_mixer-static)
     else()
-        target_link_libraries(dep_SDL2_mixer INTERFACE SDL2_mixer::SDL2_mixer)
+        target_link_libraries(dep_feature_sound INTERFACE SDL2_mixer::SDL2_mixer)
     endif()
-    target_compile_definitions(dep_SDL2_mixer INTERFACE USE_SDL_MIXER=1)
+    target_compile_definitions(dep_feature_sound INTERFACE USE_SDL_MIXER=1)
+
 endif()
 
 
@@ -234,10 +297,6 @@ set(CMAKE_C_LANGUAGE_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_LANGUAGE_EXTENSIONS OFF)
-
-set(ENABLE_FLUIDSYNTH "BUNDLED" CACHE STRING "Enable FluidSynth MIDI support (ON/BUNDLED/OFF, default BUNDLED)")
-set_property(CACHE ENABLE_FLUIDSYNTH PROPERTY STRINGS "ON" "BUNDLED" "OFF")
-add_feature_info(ENABLE_FLUIDSYNTH ENABLE_FLUIDSYNTH "Enable FluidSynth MIDI support")
 
 # To keep a minimum dependency list, any created library should be static, even third-party dependencies.
 set(BUILD_SHARED_LIBS FALSE CACHE BOOL "Force creation of static libraries, globally" FORCE)
@@ -273,61 +332,9 @@ if(SHOCK_ENABLE_OPENGL)
 	endif(WIN32)
 endif()
 
-
-if(ENABLE_FLUIDSYNTH MATCHES "ON")
-	find_package(PkgConfig)
-    pkg_check_modules(fluidsynth REQUIRED IMPORTED_TARGET fluidsynth)
-	add_definitions("-DUSE_FLUIDSYNTH=1")
-endif(ENABLE_FLUIDSYNTH MATCHES "ON")
-if(ENABLE_FLUIDSYNTH MATCHES "BUNDLED")
-	SET(FLUIDSYNTH_REVISION c539a8d9270ba5a3f7d6e460606483fc2ab1eb61)
-	FetchContent_Declare(
-		FluidSynth
-		GIT_REPOSITORY https://github.com/EtherTyper/fluidsynth-lite.git
-		GIT_TAG ${FLUIDSYNTH_REVISION}
-		EXCLUDE_FROM_ALL
-	)
-
-	if ( WIN32 )
-		# Sadly, FluidSynth-Lite has its CMakeLists.txt hardcoded to make its functions as exports.
-		# Idea: Modify CMakeLists.txt as part of this block here?
-		set(BUILD_SHARED_LIBS TRUE CACHE BOOL "Force shared libs for FluidSynth on Windows" FORCE)
-	endif ( WIN32 )
-	FetchContent_MakeAvailable(FluidSynth)
-	message("FluidSynth src-dir '${FluidSynth_SOURCE_DIR}'")
-	message("FluidSynth bin-dir '${FluidSynth_BINARY_DIR}'")
-	if(APPLE)
-		# This is a necessary hack; compiler errors for various things.
-		target_compile_options(libfluidsynth PRIVATE -Wno-error=single-bit-bitfield-constant-conversion -Wno-unused-but-set-variable)
-	endif()
-	if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 15)
-		# This is a necessary hack; gcc-15 warns (errors) if a static array is initialized
-		# with a string that exceeds its storage. This is the case for fluid_defsfont.c,
-		# where it initializes idlist.
-		target_compile_options(libfluidsynth PRIVATE -Wno-error=unterminated-string-initialization)
-	endif()
-	set(FLUIDSYNTH_INCLUDE_DIRS ${FLUIDSYNTH_INCLUDE_DIR})
-
-	set(BUILD_SHARED_LIBS FALSE CACHE BOOL "Restore creation of static libraries" FORCE)
-	add_definitions("-DUSE_FLUIDSYNTH=1")
-endif(ENABLE_FLUIDSYNTH MATCHES "BUNDLED")
-
 include_directories(
-	${FLUIDSYNTH_INCLUDE_DIRS}
 	${OPENGL_INCLUDE_DIRS}
 )
-
-if(NOT WIN32)
-  # Find ALSA for Linux native MIDI
-  # NOTE: this seems to require having 64-bit dev pacakges installed when building
-  #  on 64-bit OS, even when building a 32-bit binary
-  find_package(ALSA)
-  if(ALSA_FOUND)
-      message(STATUS "ALSA found")
-      include_directories(${ALSA_INCLUDE_DIRS})
-      add_definitions(-DUSE_ALSA=1)
-  endif(ALSA_FOUND)
-endif(NOT WIN32)
 
 # Append git commit to version string
 find_package(Git)
@@ -519,15 +526,10 @@ target_link_libraries(systemshock PRIVATE
     shockAFILE
     shockADLMIDI
     dep_SDL2main dep_SDL2
-    # UH-OH breaking a bunch of static linking stuff from upstream! I just want
-    # it to build for me for now. And static vs shared deps should be
-    # configurable anyway.
-    PkgConfig::fluidsynth
 	${OPENGL_LIBRARIES}
-	${ALSA_LIBRARIES}
 )
 if(SHOCK_ENABLE_SOUND)
-    target_link_libraries(systemshock PRIVATE dep_SDL2_mixer)
+    target_link_libraries(systemshock PRIVATE dep_feature_sound)
 endif()
 
 # Turn on address sanitizing if wanted
@@ -540,11 +542,8 @@ add_sanitizers(systemshock)
 install(TARGETS systemshock
 	RUNTIME DESTINATION .
 )
-if(WIN32)
-	if(ENABLE_FLUIDSYNTH MATCHES "BUNDLED")
-		install(FILES $<TARGET_FILE:libfluidsynth> DESTINATION .)
-	endif()
-endif()
+# TODO install is absolutely broken; needs RUNTIME_DEPENDENCIES or some more
+# complex version of that.
 
 # Toolchains may define extra libraries that should be included in the distribution.
 # This is primarily for MinGW, which needs some runtime libraries along with it.
