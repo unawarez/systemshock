@@ -1,0 +1,22 @@
+{
+    "version": 4,
+    "configurePresets": [
+        {
+            "name": "release-mingw",
+            "displayName": "Release build on Windows (MinGW)",
+            "description": "RelWithDebInfo, all deps in fetch + static mode, and final executable is linked with `-static` to avoid depending on MinGW DLLs at runtime",
+            "binaryDir": "build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "SHOCK_DEPS_DEFAULT_FETCH": "ON",
+                "SHOCK_DEPS_DEFAULT_STATIC": "ON",
+                "SHOCK_BIN_LINK_OPTIONS": "-static"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        }
+    ]
+}

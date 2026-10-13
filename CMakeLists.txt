@@ -19,7 +19,18 @@ foption(SHOCK_ENABLE_OPENGL "Enable OpenGL renderer" ON)
 foption(SHOCK_ENABLE_SOUND "Enable sound (requires SDL2_mixer)" ON)
 foption(SHOCK_ENABLE_SOUND_FLUIDSYNTH "Enable FluidSynth MIDI playback" ON)
 foption(SHOCK_ENABLE_SOUND_ALSA "Enable ALSA MIDI playback on Linux" ON)
-# Dev stuff
+
+# Build configuration
+# Link options applied only to the `systemshock` binary (or other executables
+# if we built any). This allows controlling the binary without injecting flags
+# into dependency builds. It was created specifically to allow passing
+# `-static` on MinGW as that seems the only reliable way to avoid shared
+# linking to MinGW runtime DLLs.
+set(SHOCK_BIN_LINK_OPTIONS "" CACHE STRING
+    "Extra link options for the systemshock executable (;-separated list)"
+)
+
+# Internal dev/test stuff
 foption(SHOCK_ENABLE_DEBUGGING_BLIT "Enable debugging blitter" OFF)
 
 # Dependency controls
@@ -94,8 +105,8 @@ function(resolve_dep_vars name)
     return(PROPAGATE dep_static dep_shared dep_fetch)
 endfunction()
 
-# SDL2 creates 2 targets: dep_SDL2 and dep_SDL2main. Executables are supposed
-# to link SDL2main before SDL2.
+# SDL2 creates 2 targets: dep_SDL2 and dep_SDL2main. **Executables are supposed
+# to link SDL2main before SDL2 (like, literally put it earlier in the list).**
 resolve_dep_vars(SDL2)
 add_library(dep_SDL2 INTERFACE)
 add_library(dep_SDL2main INTERFACE)
@@ -443,6 +454,7 @@ if(SHOCK_ENABLE_DEBUGGING_BLIT)
 endif()
 target_precompile_headers(systemshock PUBLIC src/GameSrc/Headers/precompiled.h)
 
+target_link_options(systemshock PRIVATE ${SHOCK_BIN_LINK_OPTIONS})
 target_link_libraries(systemshock PRIVATE
     shockLG
     shockRES
@@ -464,6 +476,11 @@ endif()
 if(SHOCK_ENABLE_SOUND)
     target_link_libraries(systemshock PRIVATE dep_feature_sound)
 endif()
+
+# Dump CMake's runtime dependency scan to a file in the build dir. CI can check
+# the generated file to avoid shipping broken assets.
+include(cmake/dump_runtime_dependencies.cmake)
+dump_runtime_dependencies(systemshock systemshock_runtime_dependencies.txt)
 
 ###############################################################################
 # Install rules (HILARIOUSLY BROKEN RN)

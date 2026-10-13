@@ -63,9 +63,16 @@ jobs:
           install: git
           pacboy: gcc:p cmake:p ninja:p
       - name: Configure
-        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+        run: cmake --preset release-mingw
       - name: Build
         run: cmake --build build
+      - name: Confirm no DLL dependencies
+        run: |
+          if grep -q . build/systemshock_runtime_dependencies.txt; then
+            echo "::error::systemshock.exe has DLL dependencies:"
+            cat build/systemshock_runtime_dependencies.txt
+            exit 1
+          fi
       - name: Install
         run: cmake --install build --prefix dist
       - name: Smoketest
