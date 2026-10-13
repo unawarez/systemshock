@@ -480,7 +480,10 @@ endif()
 # Dump CMake's runtime dependency scan to a file in the build dir. CI can check
 # the generated file to avoid shipping broken assets.
 include(cmake/dump_runtime_dependencies.cmake)
-dump_runtime_dependencies(systemshock systemshock_runtime_dependencies.txt)
+dump_runtime_dependencies(systemshock systemshock_runtime_dependencies.txt
+    PRE_EXCLUDE_REGEXES "^[Aa][Pp][Ii]-[Mm][Ss]-" "^[Ee][Xx][Tt]-[Mm][Ss]-"
+    POST_EXCLUDE_REGEXES ":[\\/][Ww][Ii][Nn][Dd][Oo][Ww][Ss][\\/][Ss][Yy][Ss][Tt][Ee][Mm]32[\\/]"
+)
 
 ###############################################################################
 # Install rules (HILARIOUSLY BROKEN RN)

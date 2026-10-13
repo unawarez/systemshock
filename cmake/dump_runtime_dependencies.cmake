@@ -9,14 +9,23 @@
 # libraries.
 function(dump_runtime_dependencies target output_filename)
     cmake_parse_arguments(PARSE_ARGV 2 arg
-        "" "SAVE_FILENAME_AS" "")
+        ""
+        "SAVE_FILENAME_AS"
+        "PRE_INCLUDE_REGEXES;PRE_EXCLUDE_REGEXES;POST_INCLUDE_REGEXES;POST_EXCLUDE_REGEXES;POST_INCLUDE_FILES;POST_EXCLUDE_FILES"
+    )
     get_target_property(assumed_out_dir "${target}" BINARY_DIR)
     cmake_path(ABSOLUTE_PATH output_filename BASE_DIRECTORY "${assumed_out_dir}")
 
     add_custom_command(TARGET "${target}" POST_BUILD
-        COMMAND cmake
+        COMMAND "${CMAKE_COMMAND}"
             "-DBINARY=$<TARGET_FILE:${target}>"
             "-DOUTPUT=${output_filename}"
+            "-DPRE_INCLUDE_REGEXES=${arg_PRE_INCLUDE_REGEXES}"
+            "-DPRE_EXCLUDE_REGEXES=${arg_PRE_EXCLUDE_REGEXES}"
+            "-DPOST_INCLUDE_REGEXES=${arg_POST_INCLUDE_REGEXES}"
+            "-DPOST_EXCLUDE_REGEXES=${arg_POST_EXCLUDE_REGEXES}"
+            "-DPOST_INCLUDE_FILES=${arg_POST_INCLUDE_FILES}"
+            "-DPOST_EXCLUDE_FILES=${arg_POST_EXCLUDE_FILES}"
             -P "${CMAKE_SOURCE_DIR}/cmake/_dump_runtime_dependencies.cmake"
         BYPRODUCTS "${output_filename}"
         VERBATIM
