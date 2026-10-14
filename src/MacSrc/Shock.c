@@ -40,6 +40,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "amaploop.h"
 #include "gr2ss.h"
 #include "hkeyfunc.h"
+#include "log.h"
 #include "mainloop.h"
 #include "setup.h"
 #include "shockolate_version.h"
@@ -78,14 +79,18 @@ extern void LoadMoveKeybinds(void);
 struct ModArg;
 struct Args {
     bool no_splash;
+    int log_level;
     size_t n_mod_args;
     const char **mod_args;
 };
+const struct Args DEFAULT_ARGS = {false, LOG_INFO, 0, 0};
 void show_usage(const char *arg0) {
     fprintf(stderr,
             "Usage: %s [options...] [mod file/dir...]\n"
-            "Options: (note `-arg` or `--arg` both accepted)\n"
+            "Options: (note: long args accept either `-arg` or `--arg`)\n"
             "  -h, -help    Show usage info\n"
+            "  -v           Log level DEBUG\n"
+            "  -vv          Log level TRACE\n"
             "  -nosplash    Disable splash screen\n",
             arg0);
 }
@@ -94,7 +99,7 @@ void show_usage(const char *arg0) {
 //		Main function.
 //------------------------------------------------------------------------------------
 int main(int argc, char **argv) {
-    struct Args args = {0};
+    struct Args args = DEFAULT_ARGS;
     for (char **argp = argv + 1; argp < argv + argc; argp++) {
         const char *arg = *argp;
         if (arg[0] != '-') {
@@ -107,6 +112,10 @@ int main(int argc, char **argv) {
         } else if (!strcmp(arg, "-h") || !strcmp(arg, "-help") || !strcmp(arg, "--help")) {
             show_usage(argv[0]);
             return 0;
+        } else if (!strcmp(arg, "-v")) {
+            args.log_level = LOG_DEBUG;
+        } else if (!strcmp(arg, "-vv")) {
+            args.log_level = LOG_TRACE;
         } else if (!strcmp(arg, "-nosplash") || !strcmp(arg, "--nosplash")) {
             args.no_splash = true;
         } else {
@@ -118,7 +127,7 @@ int main(int argc, char **argv) {
 
     // FIXME externalize this
     log_set_quiet(0);
-    log_set_level(LOG_INFO);
+    log_set_level(args.log_level);
 
     INFO("Logger initialized");
 
