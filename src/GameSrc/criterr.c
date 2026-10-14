@@ -209,5 +209,7 @@ void critical_error(unsigned short code) {
         StopAlert(1000, nil);
 #endif
 
-    CleanupAndExit(); // Get out of here.
+    // CleanupAndExit(); // Get out of here.
+    // ^ is an empty body, and we are the only thing in the codebase that calls it, so...just terminate.
+    exit(1);
 }
