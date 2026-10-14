@@ -59,9 +59,9 @@ static long next_draw_time;
 
 static char *cutscene_files[3] =
 {
-  "res/data/svgaintr.res",
-  "res/data/svgadeth.res", 
-  "res/data/svgaend.res"
+  "data/svgaintr.res",
+  "data/svgadeth.res",
+  "data/svgaend.res"
 };
 
 static Ref cutscene_anims[3] =

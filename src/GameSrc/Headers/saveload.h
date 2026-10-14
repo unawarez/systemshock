@@ -46,7 +46,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define LEVEL_ID_NUM 100
 
 // Prototypes
-errtype save_current_map(char *fname, Id id_num, uchar flush_mem, uchar pack);
+// 2026: `char *fname` was never used.
+errtype save_current_map(Id id_num, uchar flush_mem, uchar pack);
 errtype load_current_map(Id id_num);
 uchar go_to_different_level(int targlevel);
 

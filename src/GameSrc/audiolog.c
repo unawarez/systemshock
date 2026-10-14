@@ -54,8 +54,8 @@ int alog_fn = -1;
 uchar audiolog_setting = 1;
 char secret_pending_hack;
 
-char *bark_files[] = {"res/data/citbark.res", "res/data/frnbark.res", "res/data/gerbark.res"};
-char *alog_files[] = {"res/data/citalog.res", "res/data/frnalog.res", "res/data/geralog.res"};
+char *bark_files[] = {"data/citbark.res", "data/frnbark.res", "data/gerbark.res"};
+char *alog_files[] = {"data/citalog.res", "data/frnalog.res", "data/geralog.res"};
 
 extern uchar curr_vol_lev;
 extern uchar curr_alog_vol;

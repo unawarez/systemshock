@@ -261,7 +261,7 @@ errtype play_vmail(byte vmail_no)
    checking_mouse_button_emulation = game_paused = TRUE;
 
    // open the res file
-   vmail_animfile_num = ResOpenFile("res/data/vidmail.res");
+   vmail_animfile_num = ResOpenFile("data/vidmail.res");
    if (vmail_animfile_num < 0)
       return(ERR_FOPEN);
 

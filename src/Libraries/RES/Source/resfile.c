@@ -44,6 +44,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "lg.h"
 #include "res.h"
 #include "res_.h"
+#include "tryhard/files.h"
 
 //	Resource files start with this signature
 
@@ -126,9 +127,9 @@ int32_t ResOpenResFile(const char *fname, ResOpenMode mode, bool auxinfo) {
         //		fd = DatapathFDOpen(&gDatapath, fname, openMode[mode]);
 
         if (mode == ROM_READ)
-            fd = fopen_caseless(fname, "rb");
+            fd = shock_files_open_gamedata(NULL, fname, "rb");
         else
-            fd = fopen_caseless(fname, "rb+");
+            fd = shock_files_open_gamedata(NULL, fname, "rb+");
 
         if (fd != NULL) {
             fread(&fileHead, sizeof(ResFileHeader), 1, fd);
@@ -150,7 +151,7 @@ int32_t ResOpenResFile(const char *fname, ResOpenMode mode, bool auxinfo) {
     //	If create mode, or edit/create failed, try to open file for creation.
 
     if (mode == ROM_CREATE) {
-        fd = fopen_caseless(fname, "wb");
+        fd = shock_files_open_gamedata(NULL, fname, "wb");
         if (fd == NULL) {
             WARN("%s: Can't create file: %s", __FUNCTION__, fname);
             return (-2);

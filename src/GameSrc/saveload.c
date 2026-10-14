@@ -69,6 +69,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "textmaps.h"
 #include "tools.h"
 #include "trigger.h"
+#include "tryhard/files.h"
 #include "verify.h"
 
 
@@ -297,7 +298,7 @@ errtype write_id(Id id_num, short index, uint32_t version, void *ptr, long sz, i
     return (OK);
 }
 
-errtype save_current_map(char *fname, Id id_num, uchar flush_mem, uchar pack) {
+errtype save_current_map(Id id_num, uchar flush_mem, uchar pack) {
     int i, goof;
     int idx = 0;
     int fd;
@@ -309,7 +310,7 @@ errtype save_current_map(char *fname, Id id_num, uchar flush_mem, uchar pack) {
     State player_edms;
     uint32_t verify_cookie = 0;
 
-    INFO("Save current map: %s", fname);
+    INFO("Save current map");
 
     begin_wait();
 
@@ -339,7 +340,9 @@ errtype save_current_map(char *fname, Id id_num, uchar flush_mem, uchar pack) {
     //      free_dynamic_memory(DYNMEM_PARTIAL);
 
     // Open the file we're going to save into.
-    fd = ResEditFile(CURRENT_GAME_FNAME, TRUE);
+    char *path = shock_files_resolve_currentgame(NULL);
+    fd = ResEditFile(path, TRUE);
+    free(path);
     if (fd < 0) {
         ERROR("No file!");
         end_wait();
@@ -767,7 +770,9 @@ errtype load_current_map(Id id_num) {
     }
 
     // Open the saved-game (or archive) file.
-    fd = ResOpenFile(CURRENT_GAME_FNAME);
+    char *path = shock_files_resolve_currentgame(NULL);
+    fd = ResOpenFile(path);
+    free(path);
     if (fd < 0) {
         // Warning(("Could not load map file %s (%s) , rv = %d!\n",dpath_fn,fn,retval));
         ERROR("Could not load map file %d", retval);

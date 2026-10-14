@@ -23,6 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * $Date: 1994/11/23 00:05:51 $
  */
 
+#include "criterr.h"
+#include "tryhard/files.h"
 #include <string.h>
 #include <SDL.h>
 
@@ -843,7 +845,9 @@ errtype load_that_thar_game(int which_slot) {
         player_struct.level = 0xFF; // make sure we load textures
         Poke_SaveName(which_slot);
         change_mode_func(0, 0, GAME_LOOP);
-        retval = load_game(save_game_name);
+        char *path = shock_files_resolve_savegame(NULL, save_game_name, false);
+        retval = load_game(path);
+        free(path);
         if (retval != OK) {
             strcpy(comments[which_slot], "<< INVALID GAME >>");
             uiHideMouse(NULL);
@@ -1207,14 +1211,15 @@ errtype load_savegame_names(void) {
     for (i = 0; i < NUM_SAVE_SLOTS; i++) {
         Poke_SaveName(i);
 
-#ifdef __APPLE__
-        char full_save_game_name[1024];
-        sprintf(full_save_game_name, "%s%s", SDL_GetPrefPath("Interrupt", "SystemShock"), save_game_name);
-        if (access(full_save_game_name, F_OK) != -1) {
-#else
-        if (access(save_game_name, F_OK) != -1) {
-#endif
-            file = ResOpenFile(save_game_name);
+        char *save_game_path = shock_files_resolve_savegame(NULL, save_game_name, true);
+        DEBUG("Testing savegame `%s` -> `%s`", save_game_name, (save_game_path) ? save_game_path : "NULL");
+        if (save_game_path != NULL) {
+            file = ResOpenFile(save_game_path);
+            free(save_game_path);
+            if (file < 0) {
+                ERROR("Save game exists but ResOpenFile failed");
+                critical_error(CRITERR_FILE | 3);
+            }
             if (ResInUse(OLD_SAVE_GAME_ID_BASE)) {
 #ifdef OLD_SG_FORMAT
                 ResExtract(OLD_SAVE_GAME_ID_BASE, FORMAT_RAW, comments[i]);
@@ -1300,10 +1305,10 @@ void splash_draw() {
     // Need to load the splash palette file
 
     INFO("Loading splshpal.res");
-    pal_file = ResOpenFile("res/data/splshpal.res");
+    pal_file = ResOpenFile("data/splshpal.res");
 
     INFO("Loading splash.res");
-    splash_num = ResOpenFile("res/data/splash.res");
+    splash_num = ResOpenFile("data/splash.res");
 
     if (pal_file < 0)
         INFO("Could not open splshpal.res!");
@@ -1493,7 +1498,7 @@ void setup_start(void) {
     kb_flush();
     mouse_flush();
 
-    intro_num = ResOpenFile("res/data/intro.res");
+    intro_num = ResOpenFile("data/intro.res");
 
     // slam in the right palette
     load_da_palette();

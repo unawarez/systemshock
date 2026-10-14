@@ -45,6 +45,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "setup.h"
 #include "shockolate_version.h"
 #include "status.h"
+#include "tryhard/files.h"
 #include "version.h"
 
 //--------------------
@@ -124,6 +125,11 @@ int main(int argc, char **argv) {
             return 1;
         }
     }
+
+    // init file config early; who knows what depends on it?
+    shock_files_global_config.gamedata_dir = "./res";
+    shock_files_global_config.savegame_dir = SDL_GetPrefPath("Interrupt", "SystemShock");
+    // ^leak that pointer; whatever; it lives the whole program.
 
     // FIXME externalize this
     log_set_quiet(0);

@@ -303,6 +303,7 @@ add_compile_options(-fsigned-char -fno-strict-aliasing)
 include(cmake/shaders.cmake)
 
 add_subdirectory(src/Libraries/)
+add_subdirectory(src/tryhard)
 
 # MacSrc and GameSrc circularly depend on each other. Thus GAME_LIB was a lie.
 add_executable(systemshock WIN32
@@ -468,6 +469,7 @@ target_link_libraries(systemshock PRIVATE
     shockVOX
     shockAFILE
     shockADLMIDI
+    tryhard
     dep_SDL2main dep_SDL2
 )
 if(SHOCK_ENABLE_OPENGL)

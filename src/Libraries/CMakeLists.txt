@@ -222,7 +222,8 @@ add_library(shockRES STATIC
 	RES/Source/restypes.c
 )
 target_include_directories(shockRES PUBLIC RES/Source)
-target_link_libraries(shockRES shockLG shock2D dep_SDL2)
+target_link_libraries(shockRES PRIVATE tryhard)
+target_link_libraries(shockRES PUBLIC shockLG shock2D dep_SDL2)
 
 add_library(shockDSTRUCT STATIC
 	DSTRUCT/Source/array.c

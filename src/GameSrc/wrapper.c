@@ -56,6 +56,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "olhext.h"
 #include "Xmi.h"
 #include "Prefs.h"
+#include "tryhard/files.h"
 
 #include "OpenGL.h"
 
@@ -2073,7 +2074,10 @@ void load_dealfunc(uchar butid, uchar index) {
     Poke_SaveName(index);
     // Spew(DSRC_EDITOR_Save,("attempting to load from %s\n",save_game_name));
 
-    if (load_game(save_game_name) != OK) {
+    char *path = shock_files_resolve_savegame(NULL, save_game_name, false);
+    errtype ret = load_game(path);
+    free(path);
+    if (ret != OK) {
         WARN("%s: Load game failed!", __FUNCTION__);
     } else {
         INFO("Game %d loaded!", index);
@@ -2201,7 +2205,10 @@ errtype do_savegame_guts(uchar slot) {
     }
     if (retval == OK) {
         Poke_SaveName(slot);
-        if (save_game(save_game_name, comments[slot]) != OK) {
+        char *path = shock_files_resolve_savegame(NULL, save_game_name, false);
+        errtype ret = save_game(path, comments[slot]);
+        free(path);
+        if (ret != OK) {
             ERROR("Save game failed!");
             message_info("Game save failed!");
             //      strcpy(comments[comment_mode], original_comment);

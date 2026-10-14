@@ -187,7 +187,7 @@ errtype obj_load_art(uchar flush_all) {
 
     // Open the damn file
     if (!flush_all) {
-        objfnum = ResOpenFile("res/data/objart.res");
+        objfnum = ResOpenFile("data/objart.res");
         if (objfnum < 0)
             critical_error(CRITERR_RES | 5);
         // Read out the infamous bitmap zero

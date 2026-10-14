@@ -91,7 +91,7 @@ errtype load_dynamic_memory(int mask) {
 
     if (_new_mode != -1) {
         if ((~loadcount) & mask & DYNMEM_TEXTURES) {
-            texture_fnum = ResOpenFile("res/data/texture.res");
+            texture_fnum = ResOpenFile("data/texture.res");
             load_textures();
 
             if (texture_fnum < 0)
@@ -102,20 +102,20 @@ errtype load_dynamic_memory(int mask) {
         }
 
         if ((~loadcount) & mask & DYNMEM_FHANDLE_1) {
-            hand_fnum = ResOpenFile("res/data/handart.res");
+            hand_fnum = ResOpenFile("data/handart.res");
             if (hand_fnum < 0)
                 critical_error(CRITERR_RES | 3);
         }
 
         // digifx used to be FHANDLE_2
         if ((~loadcount) & mask & DYNMEM_FHANDLE_3) {
-            critter_fnum = ResOpenFile("res/data/objart2.res");
+            critter_fnum = ResOpenFile("data/objart2.res");
             if (critter_fnum < 0)
                 critical_error(CRITERR_RES | 8);
         }
 
         if ((~loadcount) & mask & DYNMEM_FHANDLE_4) {
-            critter_fnum2 = ResOpenFile("res/data/objart3.res");
+            critter_fnum2 = ResOpenFile("data/objart3.res");
             if (critter_fnum2 < 0)
                 critical_error(CRITERR_RES | 8);
         }

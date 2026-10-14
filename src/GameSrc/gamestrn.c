@@ -52,7 +52,7 @@ int string_res_file; // string res filenum
 // EXTERNALS
 // ---------
 
-char *language_files[] = {"res/data/cybstrng.res", "res/data/frnstrng.res", "res/data/gerstrng.res"};
+char *language_files[] = {"data/cybstrng.res", "data/frnstrng.res", "data/gerstrng.res"};
 extern char which_lang;
 
 // Wrapper around RefGet suitable for use by lg_sprintf to get string resources

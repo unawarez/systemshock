@@ -1871,8 +1871,8 @@ errtype obj_set_secondary_properties() {
     RefTable *prt;
     int fn, fn2;
 
-    fn = ResOpenFile("res/data/objart2.res");
-    fn2 = ResOpenFile("res/data/objart3.res");
+    fn = ResOpenFile("data/objart2.res");
+    fn2 = ResOpenFile("data/objart3.res");
     if ((fn < 0) || (fn2 < 0)) {
         //              Warning(("Problem opening object art cache!\n"));
         return (ERR_NOEFFECT);

@@ -193,7 +193,7 @@ int mfdart_res_file;
 //#ifdef DEMO
 // uchar *mfdart_files[] = { "mfdart.rsrc", "mfdart.rsrc", "mfdart.rsrc" };
 //#else
-char *mfdart_files[] = {"res/data/mfdart.res", "res/data/mfdfrn.res", "res/data/mfdger.res"};
+char *mfdart_files[] = {"data/mfdart.res", "data/mfdfrn.res", "data/mfdger.res"};
 //#endif
 
 /* MLA - don't need these
@@ -620,7 +620,7 @@ errtype init_kb() {
 errtype load_da_palette(void) {
     int pal_file;
 
-    pal_file = ResOpenFile("res/data/gamepal.res");
+    pal_file = ResOpenFile("data/gamepal.res");
     if (pal_file < 0)
         critical_error(CRITERR_RES | 4);
     ResExtract(RES_gamePalette, FORMAT_RAW, ppall);
@@ -754,23 +754,23 @@ errtype obj_3d_shutdown() {
 
 errtype init_load_resources() {
     // Open the screen resource stuff
-    if (ResOpenFile("res/data/gamescr.res") < 0)
+    if (ResOpenFile("data/gamescr.res") < 0)
         critical_error(CRITERR_RES | 1);
 
     // Open the appropriate mfd art file
-    if ((mfdart_res_file = ResOpenFile("res/data/mfdart.res")) < 0)
+    if ((mfdart_res_file = ResOpenFile("data/mfdart.res")) < 0)
         critical_error(CRITERR_RES | 2);
 
     // Open the 3d objects
-    if (ResOpenFile("res/data/obj3d.res") < 0)
+    if (ResOpenFile("data/obj3d.res") < 0)
         critical_error(CRITERR_RES | 9);
 
     // Open the Citadel materials file
-    if (ResOpenFile("res/data/citmat.res") < 0)
+    if (ResOpenFile("data/citmat.res") < 0)
         critical_error(CRITERR_RES | 9);
 
     // Open the Digital sound FX file
-    if (ResOpenFile("res/data/digifx.res") < 0)
+    if (ResOpenFile("data/digifx.res") < 0)
         critical_error(CRITERR_RES | 9);
 
     // Go load the additional mod files

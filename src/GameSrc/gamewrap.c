@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * $Date: 1994/11/26 03:36:36 $
  */
 
+#include <errno.h>
 #include <string.h>
 
 #include "Shock.h"
@@ -57,6 +58,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "status.h"
 #include "tools.h"
 #include "trigger.h"
+#include "tryhard/files.h"
 #include "wares.h"
 #include "wrapper.h"
 
@@ -108,23 +110,40 @@ errtype interpret_qvars(void);
 
 #define OldResIdFromLevel(level) (OLD_SAVE_GAME_ID_BASE + (level * 2) + 2)
 
+#ifndef SHOCK_COPY_FILE_BUFSIZE
+// so if you want the original super-mem-saving byte-at-a-time, set to 1...
+#define SHOCK_COPY_FILE_BUFSIZE 1024
+#endif
 errtype copy_file(char *src_fname, char *dest_fname) {
     FILE *fsrc, *fdst;
     DEBUG("copy_file: %s to %s", src_fname, dest_fname);
 
-    fsrc = fopen_caseless(src_fname, "rb");
+    fsrc = fopen(src_fname, "rb");
     if (fsrc == NULL) {
+        ERROR("copy: open src `%s` failed: %s", src_fname, strerror(errno));
         return ERR_FOPEN;
     }
 
-    fdst = fopen_caseless(dest_fname, "wb");
+    fdst = fopen(dest_fname, "wb");
     if (fdst == NULL) {
+        ERROR("copy: open dst `%s` failed: %s", dest_fname, strerror(errno));
         return ERR_FOPEN;
     }
 
-    int b;
-    while ((b = fgetc(fsrc)) != EOF) {
-        fputc(b, fdst);
+    uint8_t buf[SHOCK_COPY_FILE_BUFSIZE];
+    size_t r;
+    while ((r = fread(buf, 1, SHOCK_COPY_FILE_BUFSIZE, fsrc)) > 0) {
+        size_t w = fwrite(buf, 1, r, fdst);
+        if (w != r) {
+            ERROR("copy: writing dst `%s` failed: %s", dest_fname, strerror(errno));
+            // TODO remove?
+            return ERR_FWRITE;
+        }
+    }
+    if (!feof(fsrc)) {
+        ERROR("copy: reading src `%s` failed: %s", src_fname, strerror(errno));
+        // TODO remove?
+        return ERR_FWRITE;
     }
 
     fclose(fsrc);
@@ -198,8 +217,10 @@ errtype save_game(char *fname, char *comment) {
 
     // Open the current game file to save some more resources into it.
     // FSMakeFSSpec(gDataVref, gDataDirID, CURRENT_GAME_FNAME, &currSpec);
-    filenum = ResEditFile(CURRENT_GAME_FNAME, FALSE);
+    char *current_game_path = shock_files_resolve_currentgame(NULL);
+    filenum = ResEditFile(current_game_path, FALSE);
     if (filenum < 0) {
+        free(current_game_path);
         ERROR("Couldn't open Current Game");
         return ERR_FOPEN;
     }
@@ -253,7 +274,7 @@ errtype save_game(char *fname, char *comment) {
     }
 
     // Copy current game out to save game slot
-    if (copy_file(CURRENT_GAME_FNAME, fname) != OK) {
+    if (copy_file(current_game_path, fname) != OK) {
         // Put up some alert here.
         ERROR("No good copy, dude!");
         //		string_message_info(REF_STR_SaveGameFail);
@@ -262,6 +283,7 @@ errtype save_game(char *fname, char *comment) {
     // KLC		string_message_info(REF_STR_SaveGameSaved);
     old_ticks = *tmd_ticks;
     // do we have to do this?		startup_game(FALSE);
+    free(current_game_path);
     return (OK);
 }
 
@@ -330,10 +352,12 @@ errtype load_game(char *fname) {
     // KLC - don't do this here   stop_music();
 
     // Copy the save file into the current game
-    copy_file(fname, CURRENT_GAME_FNAME);
+    char *current_game_path = shock_files_resolve_currentgame(NULL);
+    copy_file(fname, current_game_path);
 
     // Load in player and current level
-    filenum = ResOpenFile(CURRENT_GAME_FNAME);
+    filenum = ResOpenFile(current_game_path);
+    free(current_game_path);
     old_plr = player_struct.rep;
     orig_lvl = player_struct.level;
 
@@ -448,12 +472,22 @@ uchar create_initial_game_func(short undefined1, ulong undefined2, void *undefin
     short plr_obj;
 
     INFO("Starting game");
-    DEBUG("Game archive at %s", ARCHIVE_FNAME);
+    char *archive_path = shock_files_resolve_gamedata(NULL, ARCHIVE_FNAME);
+    if (!archive_path) {
+        ERROR("Could not find initial archive file, searched `%s`", ARCHIVE_FNAME);
+        critical_error(CRITERR_FILE | 7);
+    }
+    DEBUG("Game archive at %s", archive_path);
 
     // Copy archive into local current game file.
 
-    if (copy_file(ARCHIVE_FNAME, CURRENT_GAME_FNAME) != OK)
+    char *current_game_path = shock_files_resolve_currentgame(NULL);
+    if (copy_file(archive_path, current_game_path) != OK) {
+        ERROR("Initial archive copy failed");
         critical_error(CRITERR_FILE | 7);
+    }
+    free(archive_path);
+    free(current_game_path);
 
     plr_obj = PLAYER_OBJ;
     for (i = 0; i < 4; i++)
@@ -525,5 +559,5 @@ errtype write_level_to_disk(int idnum, uchar flush_mem) {
     // FSMakeFSSpec(gDataVref, gDataDirID, CURRENT_GAME_FNAME, &currSpec);
 
     // char* currSpec = "saves/save.dat";
-    return (save_current_map(CURRENT_GAME_FNAME, idnum, flush_mem, TRUE));
+    return (save_current_map(idnum, flush_mem, TRUE));
 }
