@@ -1,4 +1,12 @@
+#include <algorithm>
+#include <cstdio>
+#include <cstdlib>
+#include <exception>
 #include <filesystem>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 #include "files.h"
 
 // Everything in this file does tons of stupid allocations and string copies
