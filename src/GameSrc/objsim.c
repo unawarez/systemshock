@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 // Object simulator code for Citadel
+#include "tryhard/files.h"
 #define __OBJSIM_SRC
 
 #include <string.h>
@@ -1388,7 +1389,7 @@ errtype obj_load_properties() {
     //  For Mac version, replaced with GetResource
 
     // Spew(DSRC_GFX_Anim, ("objprop path = %s\n",path));
-    FILE *f = fopen_caseless("res/data/objprop.dat", "rb");
+    FILE *f = shock_files_open_gamedata(NULL,  "data/objprop.dat", "rb");
 
     if (f == NULL) {
         return (ERR_FOPEN);

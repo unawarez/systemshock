@@ -209,7 +209,6 @@ target_link_libraries(shock3D dep_SDL2)
 target_link_libraries(shock3D shock2D m)
 
 add_library(shockRES STATIC
-	RES/Source/caseless.c
 	RES/Source/lzw.c
 	RES/Source/refacc.c
 	RES/Source/resacc.c

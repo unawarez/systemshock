@@ -40,6 +40,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "statics.h"
 
 #include "OpenGL.h"
+#include "tryhard/files.h"
 
 
 uchar textures_loaded = FALSE;
@@ -286,7 +287,7 @@ errtype Init_Lighting(void) {
     int i;
     FILE *fp;
 
-    fp = fopen_caseless("res/data/shadtabl.dat", "rb");
+    fp = shock_files_open_gamedata(NULL, "data/shadtabl.dat", "rb");
     if (fp == NULL)
         return (ERR_FOPEN);
     fread(shading_table, 1, 256 * 16, fp);
@@ -300,7 +301,7 @@ errtype Init_Lighting(void) {
     gr_set_light_tab(shading_table);
 
     // now read bw shading table
-    fp = fopen_caseless("res/data/bwtabl.dat", "rb");
+    fp = shock_files_open_gamedata(NULL, "data/bwtabl.dat", "rb");
     if (fp == NULL)
         return (ERR_FOPEN);
     fread(bw_shading_table, 1, 256 * 16, fp);
@@ -325,7 +326,7 @@ errtype load_master_texture_properties(void) {
 
     DEBUG("Loading texture properties");
 
-    FILE *f = fopen_caseless("res/data/textprop.dat", "rb");
+    FILE *f = shock_files_open_gamedata(NULL, "data/textprop.dat", "rb");
 
     if (f == NULL) {
         return (ERR_FOPEN);

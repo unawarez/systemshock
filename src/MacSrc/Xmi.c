@@ -3,6 +3,7 @@
 #include "Xmi.h"
 #include "MusicDevice.h"
 #include "Prefs.h"
+#include "tryhard/files.h"
 
 unsigned int NumTracks;
 char ChannelThread[16]; // 16 device channels
@@ -143,8 +144,7 @@ int ReadXMI(const char *filename) {
 
     INFO("Reading XMI %s", filename);
 
-    extern FILE *fopen_caseless(const char *path, const char *mode); // see caseless.c
-    f = fopen_caseless(filename, "rb");
+    f = shock_files_open_gamedata(NULL, filename, "rb");
     if (f == 0) {
         ERROR("Could not read XMI");
         return 0;

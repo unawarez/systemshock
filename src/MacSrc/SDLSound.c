@@ -1,5 +1,6 @@
 #include "Xmi.h"
 #include "MusicDevice.h"
+#include "tryhard/files.h"
 
 static snd_digi_parms digi_parms_by_channel[SND_MAX_SAMPLES];
 
@@ -151,15 +152,14 @@ int MacTuneLoadTheme(char *theme_base, int themeID) {
     FreeXMI();
 
     if (strncmp(theme_base, "thm", 3)) {
-        sprintf(filename, "res/sound/%s/%s.xmi", MusicDev->musicType, theme_base);
+        sprintf(filename, "sound/%s/%s.xmi", MusicDev->musicType, theme_base);
         ReadXMI(filename);
     } else {
-        sprintf(filename, "res/sound/%s/thm%i.xmi", MusicDev->musicType, themeID);
+        sprintf(filename, "sound/%s/thm%i.xmi", MusicDev->musicType, themeID);
         ReadXMI(filename);
 
-        sprintf(filename, "res/sound/thm%i.bin", themeID);
-        extern FILE *fopen_caseless(const char *path, const char *mode); // see caseless.c
-        f = fopen_caseless(filename, "rb");
+        sprintf(filename, "sound/thm%i.bin", themeID);
+        f = shock_files_open_gamedata(NULL, filename, "rb");
         if (f != 0) {
             fread(track_table, NUM_SCORES * SUPERCHUNKS_PER_SCORE, 1, f);
             fread(transition_table, NUM_TRANSITIONS, 1, f);

@@ -68,6 +68,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "shockolate_version.h" // for system shock version number
 
 #include "Modding.h"
+#include "tryhard/files.h"
 
 /*
 #define AIL_SOUND
@@ -710,7 +711,7 @@ void shock_alloc_ipal() {
     // CC: Make sure we always allocate an ipal first
     gr_alloc_ipal();
 
-    FILE *temp = fopen_caseless("res/data/ipal.dat", "rb");
+    FILE *temp = shock_files_open_gamedata(NULL, "data/ipal.dat", "rb");
     if (temp == NULL) {
         ERROR("Failed to open ipal.dat");
         return;

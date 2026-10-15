@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sndcall.h"
 #include "tools.h"
 #include "trigger.h"
+#include "tryhard/files.h"
 #ifdef AUDIOLOGS
 #include "audiolog.h"
 #endif
@@ -85,7 +86,7 @@ void clear_digi_fx() { stop_digi_fx(); }
 
 errtype digifx_init() {
 
-    FILE *fp = fopen_caseless("res/data/digiparm.bin", "rb");
+    FILE *fp = shock_files_open_gamedata(NULL, "data/digiparm.bin", "rb");
     if (fp == NULL) {
         printf("Failed to open digiparm.bin\n");
         return ERR_FOPEN;
