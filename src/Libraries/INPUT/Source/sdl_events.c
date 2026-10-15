@@ -379,105 +379,6 @@ extern bool TriggerRelMouseMode;
 
 static SDL_bool saved_rel_mouse = FALSE;
 
-// same codes as returned by sdlKeyCodeToSSHOCKkeyCode()
-uchar Ascii2Code[95] = {
-    0x31, // space
-    0x12, // !
-    0x27, // "
-    0x14, // #
-    0x15, // $
-    0x17, // %
-    0x1A, // &
-    0x27, // '
-    0x19, // (
-    0x1D, // )
-    0x1C, // *
-    0x18, // +
-    0x2B, // ,
-    0x1B, // -
-    0x2F, // .
-    0x2C, // /
-    0x1D, // 0
-    0x12, // 1
-    0x13, // 2
-    0x14, // 3
-    0x15, // 4
-    0x17, // 5
-    0x16, // 6
-    0x1A, // 7
-    0x1C, // 8
-    0x19, // 9
-    0x29, // :
-    0x29, // ;
-    0x2B, // <
-    0x18, // =
-    0x2F, // >
-    0x2C, // ?
-    0x13, // @
-    0x00, // A
-    0x0B, // B
-    0x08, // C
-    0x02, // D
-    0x0E, // E
-    0x03, // F
-    0x05, // G
-    0x04, // H
-    0x22, // I
-    0x26, // J
-    0x28, // K
-    0x25, // L
-    0x2E, // M
-    0x2D, // N
-    0x1F, // O
-    0x23, // P
-    0x0C, // Q
-    0x0F, // R
-    0x01, // S
-    0x11, // T
-    0x20, // U
-    0x09, // V
-    0x0D, // W
-    0x07, // X
-    0x10, // Y
-    0x06, // Z
-    0x21, // [
-    0x2A, // backslash
-    0x1E, // ]
-    0x16, // ^
-    0x1B, // _
-    0x32, // `
-    0x00, // a
-    0x0B, // b
-    0x08, // c
-    0x02, // d
-    0x0E, // e
-    0x03, // f
-    0x05, // g
-    0x04, // h
-    0x22, // i
-    0x26, // j
-    0x28, // k
-    0x25, // l
-    0x2E, // m
-    0x2D, // n
-    0x1F, // o
-    0x23, // p
-    0x0C, // q
-    0x0F, // r
-    0x01, // s
-    0x11, // t
-    0x20, // u
-    0x09, // v
-    0x0D, // w
-    0x07, // x
-    0x10, // y
-    0x06, // z
-    0x21, // {
-    0x2A, // |
-    0x1E, // }
-    0x32  // ~
-};
-
 void pump_events(void) {
     SDL_Event ev;
 
@@ -586,14 +487,10 @@ void pump_events(void) {
                         break;
                     }
 
-                    // handle non-printable or ctrl'd or alt'd keys here
-                    // other cases are handled by text input event below
-                    if (ev.key.keysym.sym < 32 || ev.key.keysym.sym > 126 || (mod & KMOD_CTRL) || (mod & KMOD_ALT)) {
-                        keyEvent.state = KBS_DOWN;
-                        addKBevent(&keyEvent);
+                    keyEvent.state = KBS_DOWN;
+                    addKBevent(&keyEvent);
 
-                        sshockKeyStates[c] = keyEvent.modifiers | KB_MOD_PRESSED;
-                    }
+                    sshockKeyStates[c] = keyEvent.modifiers | KB_MOD_PRESSED;
                 } else {
                     // key up following text input event case below is handled here
 
@@ -614,41 +511,6 @@ void pump_events(void) {
                         else
                             sshockKeyStates[i] &= ~KB_MOD_SHIFT;
                     }
-            }
-        } break;
-
-        case SDL_TEXTINPUT: {
-            uint32_t len = strlen(ev.text.text);
-
-            // for every utf8 char in null-terminated string
-            for (uint32_t i = 0; i < len; i++) {
-                int ch = ev.text.text[i];
-
-                // ignore if non-printable key
-                if (!isprint(ch))
-                    continue;
-
-                kbs_event keyEvent = {0};
-
-                keyEvent.modifiers = 0;
-
-                // if uppercase, lower it and set shift modifier
-                if (isupper(ch)) {
-                    ch = tolower(ch);
-                    keyEvent.modifiers |= KB_MOD_SHIFT;
-                }
-
-                // get code for this printable ascii key
-                int c = Ascii2Code[ch - 32];
-
-                keyEvent.code = c;
-                keyEvent.ascii = ch;
-
-                // this is a key down event; key up will be handled in event case above
-                keyEvent.state = KBS_DOWN;
-                addKBevent(&keyEvent);
-
-                sshockKeyStates[c] = keyEvent.modifiers | KB_MOD_PRESSED;
             }
         } break;
 

@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //--------------------
 #include <math.h>
 #include <SDL.h>
+#include <SDL_keyboard.h>
 
 #include "InitMac.h"
 #include "Modding.h"
@@ -193,6 +194,9 @@ void InitSDL() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO) < 0) {
         DEBUG("%s: Init failed", __FUNCTION__);
     }
+    // "On desktop platforms, SDL_StartTextInput() is implicitly called on SDL
+    // video subsystem initialization"
+    SDL_StopTextInput();
 
     // TODO: figure out some universal set of settings that work...
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
