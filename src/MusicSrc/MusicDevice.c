@@ -1,4 +1,6 @@
 #include "MusicDevice.h"
+#include "tryhard/files.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef WIN32
@@ -14,13 +16,9 @@
 # if defined(USE_ALSA)
 #  include <alsa/asoundlib.h>
 # endif
-// Linux/Mac FluidMidi SF2 search support
-# include <sys/types.h>
-# include <dirent.h>
 #endif
-#ifdef __APPLE__
-#include <SDL.h>
-#endif
+// after windows.h: wingdi.h has `#define ERROR 0`, which would clobber lg.h's ERROR()
+#include "lg.h"
 
 //------------------------------------------------------------------------------
 // Dummy MIDI player
@@ -1008,36 +1006,34 @@ static MusicDevice *createNativeMidiDevice()
 #ifdef USE_FLUIDSYNTH
 #include <fluidsynth.h>
 
-typedef struct FluidMidiDevice
-{
+typedef struct FluidMidiDevice {
     MusicDevice dev;
     fluid_synth_t *synth;
     fluid_settings_t *settings;
+    ShockFilesSf2List *sf2list;
 } FluidMidiDevice;
 
 // forward declaration
-static void FluidMidiGetOutputName(MusicDevice *dev, const unsigned int outputIndex, char *buffer, const unsigned int bufferSize);
+static void FluidMidiGetOutputName(MusicDevice *dev, const unsigned int outputIndex, char *buffer,
+                                   const unsigned int bufferSize);
 
-static int FluidMidiInit(MusicDevice *dev, const unsigned int outputIndex, unsigned samplerate)
-{
+static int FluidMidiInit(MusicDevice *dev, const unsigned int outputIndex, unsigned samplerate) {
     FluidMidiDevice *fdev = (FluidMidiDevice *)dev;
-    if (!fdev || fdev->dev.isOpen) return 0;
+    if (!fdev) {
+        ERROR("FluidMidiInit on null handle");
+        return 0;
+    } else if (fdev->dev.isOpen) {
+        WARN("reinitializing FluidMidiDevice that's already open; doing nothing");
+        return 0;
+    }
 
     fluid_settings_t *settings;
     fluid_synth_t *synth;
     int sfid;
-#ifdef __APPLE__
-    char fileName[1024] = "";
-    sprintf(fileName, "%sres/", SDL_GetBasePath());
 
-    FluidMidiGetOutputName(dev, outputIndex, &fileName[strlen(fileName)], 1024 - strlen(fileName));
-#else
-    char fileName[1024] = "res/";
-    FluidMidiGetOutputName(dev, outputIndex, &fileName[4], 1020);
-#endif
-    if (strlen(fileName) == 4)
-    {
-        WARN("Failed to locate SoundFont for outputIndex=%d", outputIndex);
+    char *sf2path =shock_files_sf2list_path_utf8(fdev->sf2list, outputIndex);
+    if(!sf2path) {
+        ERROR("invalid output index %d", outputIndex);
         return -1;
     }
 
@@ -1047,17 +1043,18 @@ static int FluidMidiInit(MusicDevice *dev, const unsigned int outputIndex, unsig
     fluid_settings_setnum(settings, "synth.gain", 0.5);
 
     synth = new_fluid_synth(settings);
-    sfid = fluid_synth_sfload(synth, fileName, 1);
+    sfid = fluid_synth_sfload(synth, sf2path, 1);
 
-    if (sfid == FLUID_FAILED)
-    {
-        WARN("cannot load %s for FluidSynth", fileName);
+    if (sfid == FLUID_FAILED) {
+        WARN("cannot load %s for FluidSynth", sf2path);
+        free(sf2path);
         delete_fluid_synth(synth);
         delete_fluid_settings(settings);
         fdev->synth = NULL;
         fdev->settings = NULL;
         return -1;
     }
+    free(sf2path);
 
     fluid_synth_sfont_select(synth, 0, sfid);
 
@@ -1070,13 +1067,14 @@ static int FluidMidiInit(MusicDevice *dev, const unsigned int outputIndex, unsig
     return 0;
 }
 
-static void FluidMidiDestroy(MusicDevice *dev)
-{
+static void FluidMidiDestroy(MusicDevice *dev) {
     FluidMidiDevice *fdev = (FluidMidiDevice *)dev;
-    if (!fdev) return;
+    if (!fdev)
+        return;
 
     delete_fluid_synth(fdev->synth);
     delete_fluid_settings(fdev->settings);
+    shock_files_sf2list_free(fdev->sf2list);
     free(fdev);
 }
 
@@ -1178,116 +1176,38 @@ static void FluidMidiSendPitchBendML(MusicDevice *dev, int channel, int msb, int
     fluid_synth_pitch_bend(synth, channel, msb * 128 + lsb);
 }
 
-static unsigned int FluidMidiGetOutputCount(MusicDevice *dev)
-{
-    unsigned int outputCount = 0;
-#ifdef WIN32
-    // count number of .sf2 files in res/ subdirectory
-    char const * const pattern = "res\\*.sf2";
-    WIN32_FIND_DATA data;
-    HANDLE hFind;
-    if ((hFind = FindFirstFile(pattern, &data)) != INVALID_HANDLE_VALUE)
-    {
-        // INFO("Counting SoundFont file: %s", data.cFileName);
-        do { ++outputCount; } while (FindNextFile(hFind, &data));
-        FindClose(hFind);
-    }
-#else
-#ifdef __APPLE__
-    char *respath[1024];
-    sprintf(respath, "%sres/", SDL_GetBasePath());
-    DIR *dirp = opendir(respath);
-#else
-    DIR *dirp = opendir("res");
-#endif
-    struct dirent *dp = 0;
-    while ((dp = readdir(dirp)))
-    {
-        char *filename = dp->d_name;
-        char namelen = strlen(filename);
-        if (namelen < 4) continue; // ".sf2"
-        if (strcasecmp(".sf2", (char*)(filename + (namelen - 4)))) continue;
-        // found one
-        // INFO("Counting SoundFont file: %s", filename);
-        ++outputCount;
-    }
-    closedir(dirp);
-#endif
-
-    // suppress compiler warnings
-    (void)dev;
-
-    return outputCount;
+static unsigned int FluidMidiGetOutputCount(MusicDevice *dev) {
+    FluidMidiDevice *fdev = (FluidMidiDevice *)dev;
+    return shock_files_sf2list_count(fdev->sf2list);
 }
 
-static void FluidMidiGetOutputName(MusicDevice *dev, const unsigned int outputIndex, char *buffer, const unsigned int bufferSize)
-{
-    if (!buffer || bufferSize < 1) return;
-    // default to nothing
-    // save last position for NULL character
-    strncpy(buffer, "No SoundFonts found", bufferSize - 1);
-#if WIN32
-    unsigned int outputCount = 0; // subtract 1 to get index
-    // count .sf2 files in res/ subdirectory until we find the one that the user
-    //  probably wants
-    char const * const pattern = "res\\*.sf2";
-    WIN32_FIND_DATA data;
-    HANDLE hFind;
-    if ((hFind = FindFirstFile(pattern, &data)) != INVALID_HANDLE_VALUE)
-    {
-        do
-        {
-            ++outputCount;
-            if (outputCount - 1 == outputIndex)
-            {
-                // found it
-                strncpy(buffer, data.cFileName, bufferSize - 1);
-                // INFO("Found SoundFont file for outputIndex=%d: %s", outputIndex, data.cFileName);
-                break;
-            }
-        } while (FindNextFile(hFind, &data));
-        FindClose(hFind);
+static void FluidMidiGetOutputName(MusicDevice *dev, const unsigned int outputIndex, char *buffer,
+                                   const unsigned int bufferSize) {
+    if (!buffer || bufferSize < 1)
+        return;
+    FluidMidiDevice *fdev = (FluidMidiDevice *)dev;
+    char *filename = shock_files_sf2list_filename_utf8(fdev->sf2list, outputIndex);
+    if (filename) {
+        snprintf(buffer, bufferSize, "%s", filename);
+        free(filename);
+    } else {
+        snprintf(buffer, bufferSize, "No SoundFonts found");
     }
-#else
-    unsigned int outputCount = 0; // subtract 1 to get index
-    // count .sf2 files in res/ subdirectory until we find the one that the user
-    //  probably wants
-#ifdef __APPLE__
-    char *respath[1024];
-    sprintf(respath, "%sres/", SDL_GetBasePath());
-    DIR *dirp = opendir(respath);
-#else
-    DIR *dirp = opendir("res");
-#endif
-    struct dirent *dp = 0;
-    while ((outputCount <= outputIndex) &&
-           (dp = readdir(dirp)))
-    {
-        char *filename = dp->d_name;
-        char namelen = strlen(filename);
-        if (namelen < 4) continue; // ".sf2"
-        if (strcasecmp(".sf2", (char*)(filename + (namelen - 4)))) continue;
-        // found one
-        // INFO("Counting SoundFont file: %s", filename);
-        ++outputCount;
-        if (outputCount - 1 != outputIndex) continue;
-        // found it
-        strncpy(buffer, filename, bufferSize - 1);
-        // INFO("Found SoundFont file for outputIndex=%d: %s", outputIndex, filename);
-    }
-    closedir(dirp);
-#endif
-    // put NULL in last position in case we filled up everything else
-    *(buffer + bufferSize - 1) = '\0';
-
-    // suppress compiler warnings
-    (void)dev;
-    (void)outputIndex;
 }
 
-static MusicDevice *createFluidSynthDevice()
-{
-    FluidMidiDevice *fdev = malloc(sizeof(FluidMidiDevice));
+static MusicDevice *createFluidSynthDevice() {
+    ShockFilesSf2List *sf2list = shock_files_sf2list_new(NULL);
+    if (!sf2list) {
+        ERROR("couldn't get soundfont list, so can't initialize FluidSynth");
+        return NULL;
+    }
+    if (!shock_files_sf2list_count(sf2list)){
+        ERROR("no SoundFonts found, so can't initialize FluidSynth");
+        shock_files_sf2list_free(sf2list);
+        return NULL;
+    }
+
+    FluidMidiDevice *fdev = calloc(1, sizeof(FluidMidiDevice));
     fdev->dev.init = &FluidMidiInit;
     fdev->dev.destroy = &FluidMidiDestroy;
     fdev->dev.setupMode = &FluidMidiSetupMode;
@@ -1306,6 +1226,7 @@ static MusicDevice *createFluidSynthDevice()
     fdev->dev.outputIndex = 0;
     fdev->dev.deviceType = Music_FluidSynth;
     fdev->dev.musicType = MUSICTYPE_GENMIDI;
+    fdev->sf2list = sf2list;
     return &(fdev->dev);
 }
 #endif // USE_FLUIDSYNTH

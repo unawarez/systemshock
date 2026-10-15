@@ -23,7 +23,8 @@ using stdpath = std::filesystem::path;
 using pathstring = std::filesystem::path::string_type;
 
 // acceptable defaults instead of segfaults:
-ShockFilesConfig shock_files_global_config{"res", "savegame"};
+ShockFilesConfig shock_files_global_config{"res", "savegame", "res"};
+// (soundfonts in res is the back-compat choice)
 
 // Replacement for std::tolower used in the case-insensitive searching.
 // Everything online says std::tolower is full of undefined behavior. The case
@@ -320,5 +321,62 @@ char *shock_files_resolve_currentgame(const ShockFilesConfig *cfg) {
         stdfs::create_directories(path);
         path /= "CurrentGame.dat";
         return mallocize_byte_string(path.u8string());
+    })
+}
+
+// ============================================================================
+// Soundfont stuff
+// ============================================================================
+
+struct ShockFilesSf2List {
+    std::vector<stdpath> files;
+};
+
+ShockFilesSf2List *shock_files_sf2list_new(const ShockFilesConfig *cfg) {
+    DONT_UNWIND(nullptr, {
+        if (!cfg) {
+            cfg = &shock_files_global_config;
+        }
+        std::vector<stdpath> files;
+        stdfs::directory_iterator di{stdfs::u8path(cfg->soundfont_dir)}, end{};
+        for (; di != end; di++) {
+            if (di->is_regular_file() || di->is_symlink()) {
+                // TODO then need to check that the link target is regular
+                // file, and ofc std::filesystem gives us nothing to resolve
+                // paths, because, it was just too good already, they couldn't
+                // fit any more goodness in the header files
+                const auto path{di->path()};
+                if (path.extension() == ".sf2") {
+                    files.push_back(std::move(path));
+                }
+            }
+        }
+        return new ShockFilesSf2List{files};
+    })
+}
+
+void shock_files_sf2list_free(ShockFilesSf2List *list){DONT_UNWIND(/*void*/, { delete list; })}
+
+size_t shock_files_sf2list_count(const ShockFilesSf2List *list) {
+    return list->files.size();
+}
+
+char *shock_files_sf2list_filename_utf8(const ShockFilesSf2List *list, size_t index) {
+    DONT_UNWIND(nullptr, {
+        if (index < list->files.size()) {
+            return mallocize_byte_string(list->files[index].filename().u8string());
+        } else {
+            return nullptr;
+        }
+    })
+}
+
+char *shock_files_sf2list_path_utf8(const ShockFilesSf2List *list, size_t index) {
+    DONT_UNWIND(nullptr, {
+        if (index < list->files.size()) {
+            return mallocize_byte_string(list->files[index].u8string());
+        } else {
+            return nullptr;
+        }
     })
 }

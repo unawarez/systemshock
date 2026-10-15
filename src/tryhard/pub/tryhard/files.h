@@ -13,6 +13,8 @@ typedef struct ShockFilesConfig {
     // Save game dir. CurrentGame.dat is also placed here (it's a runtime thing
     // critical for the game).
     const char *savegame_dir;
+    // Soundfont dir for MIDI playback.
+    const char *soundfont_dir;
 } ShockFilesConfig;
 
 // cute lil unsafe global so existing code can be moved over without changing
@@ -82,6 +84,27 @@ char *shock_files_resolve_savegame(const ShockFilesConfig *cfg, const char *save
 //
 // Returns a malloc'd UTF-8-encoded absolute path to the file.
 char *shock_files_resolve_currentgame(const ShockFilesConfig *cfg);
+
+// ============================================================================
+// Soundfont stuff
+// ============================================================================
+// The most complicated path stuff by far is listing soundfonts for MIDI
+// players, so all that quickly moved into here and hidden behind a semi-opaque
+// type.
+typedef struct ShockFilesSf2List ShockFilesSf2List;
+
+ShockFilesSf2List *shock_files_sf2list_new(const ShockFilesConfig *cfg);
+void shock_files_sf2list_free(ShockFilesSf2List *);
+
+size_t shock_files_sf2list_count(const ShockFilesSf2List *);
+// returns utf-8, and thus needs a malloc'd copy.
+char *shock_files_sf2list_filename_utf8(const ShockFilesSf2List *, size_t index);
+// a huge mission was to preserve native path encoding (lol windows), but
+// fluidsynth just takes a char* and passes it to fopen, so no point
+// trying/caring. will just force into utf-8 and it should be the same as
+// before. unfortunately that does mean even more malloc'ing; this returns a
+// malloc'd pointer.
+char *shock_files_sf2list_path_utf8(const ShockFilesSf2List *, size_t index);
 
 #ifdef __cplusplus
 } // extern C
