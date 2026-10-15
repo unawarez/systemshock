@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <cwchar>
 #include <exception>
 #include <filesystem>
 #include <stdexcept>
@@ -196,6 +197,32 @@ class case_insensitive_tree_matches {
     iterator end() { return iterator{}; }
 };
 
+// doodoofix for windows:
+// * most code today wants C FILE*
+// * the only C thing that can give you a FILE* is fopen
+// * fopen assumes 8-bit chars. windows makes fopen path go through codepage translation.
+// * windows has separate _wfopen that takes wchar_t (but also the mode string is wchar_t, lmao)
+// so this must dispatch between the 2 fopen variants.
+template <class PathChar> FILE *generic_fopen(const PathChar *path, const char *mode);
+template <> FILE *generic_fopen(const char *path, const char *mode) { return fopen(path, mode); }
+#ifdef _WIN32
+template <> FILE *generic_fopen(const wchar_t *path, const char *mode) {
+    // the mode string needs to be turned into a wide string.
+    mbstate_t mbstate = {0};
+    // size_t mbsrtowcs(wchar_t *restrict dst, const char **restrict src, size_t len, mbstate_t *restrict ps);
+    const char *lol{mode};
+    wchar_t widemode[8];
+    mbsrtowcs(widemode, &lol, (sizeof(widemode) / sizeof(widemode[0])) - 1, &mbstate);
+    widemode[(sizeof(widemode) / sizeof(widemode[0])) - 1] = 0;
+    if (lol) {
+        // TODO log error crazy mode string
+        return nullptr;
+    } else {
+        return _wfopen(path, widemode);
+    }
+}
+#endif
+
 #define DONT_UNWIND(failvalue, ...)                 \
     try {                                           \
         __VA_ARGS__                                 \
@@ -212,21 +239,21 @@ char *mallocize_byte_string(const std::string &str) {
     return out;
 }
 
-FILE *shock_files_open_gamedata(const ShockFilesConfig *cfg, const char *path, const char *mode) {
+FILE *shock_files_open_gamedata(const ShockFilesConfig *cfg, const char *path_utf8, const char *mode) {
     DONT_UNWIND(nullptr, {
         if (!cfg) {
             cfg = &shock_files_global_config;
         }
 
-        const stdpath input{stdfs::u8path(path)};
-        if (input.empty()) {
+        const stdpath path{stdfs::u8path(path_utf8)};
+        if (path.empty()) {
             throw std::runtime_error{"path is empty"};
-        } else if (input.is_absolute()) {
-            return fopen(input.c_str(), mode);
+        } else if (path.is_absolute()) {
+            return generic_fopen(path.c_str(), mode);
         } else {
-            auto pathfinder{case_insensitive_tree_matches{stdfs::u8path(cfg->gamedata_dir), input}.begin()};
+            auto pathfinder{case_insensitive_tree_matches{stdfs::u8path(cfg->gamedata_dir), path}.begin()};
             if (pathfinder) {
-                return fopen((*pathfinder).path().c_str(), mode);
+                return generic_fopen((*pathfinder).path().c_str(), mode);
             } else {
                 return nullptr;
             }

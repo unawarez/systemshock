@@ -46,7 +46,7 @@ extern ShockFilesConfig shock_files_global_config;
 // without checking for case-insensitive matches already existing.
 //
 // fun new API pattern: null cfg means use the global pointer.
-FILE *shock_files_open_gamedata(const ShockFilesConfig *cfg, const char *path, const char *mode);
+FILE *shock_files_open_gamedata(const ShockFilesConfig *cfg, const char *path_utf8, const char *mode);
 
 // Path logic of the prev function but returns an absolute path instead of the
 // fopen. Free with free(). NOTE non-null does not guarantee the file exists!
