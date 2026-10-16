@@ -86,7 +86,7 @@ static void addMouseEvent(const ss_mouse_event *ev) {
     }
 }
 
-static uchar sdlKeyCodeToSSHOCKkeyCode(SDL_Keycode kc) {
+static uchar sdlScanCodeToSSHOCKkeyCode(SDL_Scancode scancode) {
     // apparently System Shock uses the same keycodes as Mac
     // which are luckily documented, see
     // see http://snipplr.com/view/42797/
@@ -95,150 +95,150 @@ static uchar sdlKeyCodeToSSHOCKkeyCode(SDL_Keycode kc) {
 
     // printf("sdlKeyCodeToSSHOCKkeyCode: %x\n", kc);
 
-    switch (kc) {
-    case SDLK_a:
+    switch (scancode) {
+    case SDL_SCANCODE_A:
         return 0x00; //  kVK_ANSI_A = 0x00,
-    case SDLK_s:
+    case SDL_SCANCODE_S:
         return 0x01; //  kVK_ANSI_S = 0x01,
-    case SDLK_d:
+    case SDL_SCANCODE_D:
         return 0x02; //  kVK_ANSI_D = 0x02,
-    case SDLK_f:
+    case SDL_SCANCODE_F:
         return 0x03; //  kVK_ANSI_F = 0x03,
-    case SDLK_h:
+    case SDL_SCANCODE_H:
         return 0x04; //  kVK_ANSI_H = 0x04,
-    case SDLK_g:
+    case SDL_SCANCODE_G:
         return 0x05; //  kVK_ANSI_G = 0x05,
-    case SDLK_z:
+    case SDL_SCANCODE_Z:
         return 0x06; //  kVK_ANSI_Z = 0x06,
-    case SDLK_x:
+    case SDL_SCANCODE_X:
         return 0x07; //  kVK_ANSI_X = 0x07,
-    case SDLK_c:
+    case SDL_SCANCODE_C:
         return 0x08; //  kVK_ANSI_C = 0x08,
-    case SDLK_v:
+    case SDL_SCANCODE_V:
         return 0x09; //  kVK_ANSI_V = 0x09,
-    case SDLK_b:
+    case SDL_SCANCODE_B:
         return 0x0B; //  kVK_ANSI_B = 0x0B,
-    case SDLK_q:
+    case SDL_SCANCODE_Q:
         return 0x0C; //  kVK_ANSI_Q = 0x0C,
-    case SDLK_w:
+    case SDL_SCANCODE_W:
         return 0x0D; //  kVK_ANSI_W = 0x0D,
-    case SDLK_e:
+    case SDL_SCANCODE_E:
         return 0x0E; //  kVK_ANSI_E = 0x0E,
-    case SDLK_r:
+    case SDL_SCANCODE_R:
         return 0x0F; //  kVK_ANSI_R = 0x0F,
-    case SDLK_y:
+    case SDL_SCANCODE_Y:
         return 0x10; //  kVK_ANSI_Y = 0x10,
-    case SDLK_t:
+    case SDL_SCANCODE_T:
         return 0x11; //  kVK_ANSI_T = 0x11,
-    case SDLK_1:
+    case SDL_SCANCODE_1:
         return 0x12; //  kVK_ANSI_1 = 0x12,
-    case SDLK_2:
+    case SDL_SCANCODE_2:
         return 0x13; //  kVK_ANSI_2 = 0x13,
-    case SDLK_3:
+    case SDL_SCANCODE_3:
         return 0x14; //  kVK_ANSI_3 = 0x14,
-    case SDLK_4:
+    case SDL_SCANCODE_4:
         return 0x15; //  kVK_ANSI_4 = 0x15,
-    case SDLK_6:
+    case SDL_SCANCODE_6:
         return 0x16; //  kVK_ANSI_6 = 0x16,
-    case SDLK_5:
+    case SDL_SCANCODE_5:
         return 0x17; //  kVK_ANSI_5 = 0x17,
-    case SDLK_EQUALS:
+    case SDL_SCANCODE_EQUALS:
         return 0x18; //  kVK_ANSI_Equal = 0x18,
-    case SDLK_9:
+    case SDL_SCANCODE_9:
         return 0x19; //  kVK_ANSI_9 = 0x19,
-    case SDLK_7:
+    case SDL_SCANCODE_7:
         return 0x1A; //  kVK_ANSI_7 = 0x1A,
-    case SDLK_MINUS:
+    case SDL_SCANCODE_MINUS:
         return 0x1B; //  kVK_ANSI_Minus = 0x1B,
-    case SDLK_8:
+    case SDL_SCANCODE_8:
         return 0x1C; //  kVK_ANSI_8 = 0x1C,
-    case SDLK_0:
+    case SDL_SCANCODE_0:
         return 0x1D; //  kVK_ANSI_0 = 0x1D,
-    case SDLK_RIGHTBRACKET:
+    case SDL_SCANCODE_RIGHTBRACKET:
         return 0x1E; //  kVK_ANSI_RightBracket = 0x1E,
-    case SDLK_o:
+    case SDL_SCANCODE_O:
         return 0x1F; //  kVK_ANSI_O = 0x1F,
-    case SDLK_u:
+    case SDL_SCANCODE_U:
         return 0x20; //  kVK_ANSI_U = 0x20,
-    case SDLK_LEFTBRACKET:
+    case SDL_SCANCODE_LEFTBRACKET:
         return 0x21; //  kVK_ANSI_LeftBracket = 0x21,
-    case SDLK_i:
+    case SDL_SCANCODE_I:
         return 0x22; //  kVK_ANSI_I = 0x22,
-    case SDLK_p:
+    case SDL_SCANCODE_P:
         return 0x23; //  kVK_ANSI_P = 0x23,
-    case SDLK_l:
+    case SDL_SCANCODE_L:
         return 0x25; //  kVK_ANSI_L = 0x25,
-    case SDLK_j:
+    case SDL_SCANCODE_J:
         return 0x26; //  kVK_ANSI_J = 0x26,
-    case SDLK_QUOTE:
-        return 0x27; //  kVK_ANSI_Quote = 0x27, // TODO: or QUOTEDBL ?
-    case SDLK_k:
+    case SDL_SCANCODE_APOSTROPHE:
+        return 0x27; //  kVK_ANSI_Quote = 0x27,
+    case SDL_SCANCODE_K:
         return 0x28; //  kVK_ANSI_K = 0x28,
-    case SDLK_SEMICOLON:
+    case SDL_SCANCODE_SEMICOLON:
         return 0x29; //  kVK_ANSI_Semicolon = 0x29,
-    case SDLK_BACKSLASH:
+    case SDL_SCANCODE_BACKSLASH:
         return 0x2A; //  kVK_ANSI_Backslash = 0x2A,
-    case SDLK_COMMA:
+    case SDL_SCANCODE_COMMA:
         return 0x2B; //  kVK_ANSI_Comma = 0x2B,
-    case SDLK_SLASH:
+    case SDL_SCANCODE_SLASH:
         return 0x2C; //  kVK_ANSI_Slash = 0x2C,
-    case SDLK_n:
+    case SDL_SCANCODE_N:
         return 0x2D; //  kVK_ANSI_N = 0x2D,
-    case SDLK_m:
+    case SDL_SCANCODE_M:
         return 0x2E; //  kVK_ANSI_M = 0x2E,
-    case SDLK_PERIOD:
+    case SDL_SCANCODE_PERIOD:
         return 0x2F; //  kVK_ANSI_Period = 0x2F,
-    case SDLK_BACKQUOTE:
-        return 0x32; //  kVK_ANSI_Grave = 0x32, // TODO: really?
-    case SDLK_KP_DECIMAL:
+    case SDL_SCANCODE_GRAVE:
+        return 0x32; //  kVK_ANSI_Grave = 0x32,
+    case SDL_SCANCODE_KP_DECIMAL:
         return 0x41; //  kVK_ANSI_KeypadDecimal   = 0x41,
-    case SDLK_KP_MULTIPLY:
+    case SDL_SCANCODE_KP_MULTIPLY:
         return 0x43; //  kVK_ANSI_KeypadMultiply = 0x43,
-    case SDLK_KP_PLUS:
+    case SDL_SCANCODE_KP_PLUS:
         return 0x45; //  kVK_ANSI_KeypadPlus = 0x45,
-    case SDLK_KP_CLEAR:
+    case SDL_SCANCODE_KP_CLEAR:
         return 0x47; //  kVK_ANSI_KeypadClear = 0x47,
-    case SDLK_KP_DIVIDE:
+    case SDL_SCANCODE_KP_DIVIDE:
         return 0x4B; //  kVK_ANSI_KeypadDivide = 0x4B,
-    case SDLK_KP_ENTER:
+    case SDL_SCANCODE_KP_ENTER:
         return 0x4C; //  kVK_ANSI_KeypadEnter   = 0x4C, aka _ENTER2_
-    case SDLK_KP_MINUS:
+    case SDL_SCANCODE_KP_MINUS:
         return 0x4E; //  kVK_ANSI_KeypadMinus   = 0x4E,
-    case SDLK_KP_EQUALS:
+    case SDL_SCANCODE_KP_EQUALS:
         return 0x51; //  kVK_ANSI_KeypadEquals = 0x51,
-    case SDLK_KP_0:
+    case SDL_SCANCODE_KP_0:
         return 0x52; //  kVK_ANSI_Keypad0 = 0x52,
-    case SDLK_KP_1:
+    case SDL_SCANCODE_KP_1:
         return 0x53; //  kVK_ANSI_Keypad1 = 0x53, aka _END2_
-    case SDLK_KP_2:
+    case SDL_SCANCODE_KP_2:
         return 0x54; //  kVK_ANSI_Keypad2 = 0x54, aka _DOWN2_
-    case SDLK_KP_3:
+    case SDL_SCANCODE_KP_3:
         return 0x55; //  kVK_ANSI_Keypad3 = 0x55, aka _PGDN2_
-    case SDLK_KP_4:
+    case SDL_SCANCODE_KP_4:
         return 0x56; //  kVK_ANSI_Keypad4 = 0x56, aka _LEFT2_
-    case SDLK_KP_5:
+    case SDL_SCANCODE_KP_5:
         return 0x57; //  kVK_ANSI_Keypad5 = 0x57, aka _PAD5_
-    case SDLK_KP_6:
+    case SDL_SCANCODE_KP_6:
         return 0x58; //  kVK_ANSI_Keypad6 = 0x58, aka _RIGHT2_
-    case SDLK_KP_7:
+    case SDL_SCANCODE_KP_7:
         return 0x59; //  kVK_ANSI_Keypad7 = 0x59, aka _HOME2_
-    case SDLK_KP_8:
+    case SDL_SCANCODE_KP_8:
         return 0x5B; //  kVK_ANSI_Keypad8 = 0x5B, aka _UP2_
-    case SDLK_KP_9:
+    case SDL_SCANCODE_KP_9:
         return 0x5C; //  kVK_ANSI_Keypad9 = 0x5C, aka _PGUP2_
 
     // keycodes for keys that are independent of keyboard layout
-    case SDLK_RETURN:
+    case SDL_SCANCODE_RETURN:
         return 0x24; //  kVK_Return  = 0x24,
-    case SDLK_TAB:
+    case SDL_SCANCODE_TAB:
         return 0x30; //  kVK_Tab     = 0x30,
-    case SDLK_SPACE:
+    case SDL_SCANCODE_SPACE:
         return 0x31; //  kVK_Space   = 0x31,
-    case SDLK_DELETE:
+    case SDL_SCANCODE_BACKSPACE:
         return 0x33; //  kVK_Delete  = 0x33,
-    case SDLK_BACKSPACE:
-        return 0x33; //  kVK_Delete  = 0x33,
-    case SDLK_ESCAPE:
+    case SDL_SCANCODE_DELETE:
+        return 0x75; //  kVK_ForwardDelete = 0x75,
+    case SDL_SCANCODE_ESCAPE:
         return 0x35; //  kVK_Escape  = 0x35,
 
         //    returning these is unnecessary and can cause keypresses to be missed
@@ -253,71 +253,69 @@ static uchar sdlKeyCodeToSSHOCKkeyCode(SDL_Keycode kc) {
         // case SDLK_RALT : return 0x3D; //  kVK_RightOption = 0x3D,
         // case SDLK_RCTRL : return 0x3E; //  kVK_RightControl = 0x3E,
 
-    // case SDLK_ : return 0x3F; //  kVK_Function = 0x3F, // TODO: what's this?
-    case SDLK_F17:
+    case SDL_SCANCODE_F17:
         return 0x40; //  kVK_F17 = 0x40,
-    case SDLK_VOLUMEUP:
+    case SDL_SCANCODE_VOLUMEUP:
         return 0x48; //  kVK_VolumeUp = 0x48,
-    case SDLK_VOLUMEDOWN:
+    case SDL_SCANCODE_VOLUMEDOWN:
         return 0x49; //  kVK_VolumeDown = 0x49,
-    case SDLK_MUTE:
+    case SDL_SCANCODE_MUTE:
         return 0x4A; //  kVK_Mute = 0x4A,
-    case SDLK_F18:
+    case SDL_SCANCODE_F18:
         return 0x4F; //  kVK_F18 = 0x4F,
-    case SDLK_F19:
+    case SDL_SCANCODE_F19:
         return 0x50; //  kVK_F19 = 0x50,
-    case SDLK_F20:
+    case SDL_SCANCODE_F20:
         return 0x5A; //  kVK_F20 = 0x5A,
-    case SDLK_F5:
+    case SDL_SCANCODE_F5:
         return 0x60; //  kVK_F5  = 0x60,
-    case SDLK_F6:
+    case SDL_SCANCODE_F6:
         return 0x61; //  kVK_F6  = 0x61,
-    case SDLK_F7:
+    case SDL_SCANCODE_F7:
         return 0x62; //  kVK_F7  = 0x62,
-    case SDLK_F3:
+    case SDL_SCANCODE_F3:
         return 0x63; //  kVK_F3  = 0x63,
-    case SDLK_F8:
+    case SDL_SCANCODE_F8:
         return 0x64; //  kVK_F8  = 0x64,
-    case SDLK_F9:
+    case SDL_SCANCODE_F9:
         return 0x65; //  kVK_F9  = 0x65,
-    case SDLK_F11:
+    case SDL_SCANCODE_F11:
         return 0x67; //  kVK_F11 = 0x67,
-    case SDLK_F13:
+    case SDL_SCANCODE_F13:
         return 0x69; //  kVK_F13 = 0x69,
-    case SDLK_F16:
+    case SDL_SCANCODE_F16:
         return 0x6A; //  kVK_F16 = 0x6A,
-    case SDLK_F14:
+    case SDL_SCANCODE_F14:
         return 0x6B; //  kVK_F14 = 0x6B,
-    case SDLK_F10:
+    case SDL_SCANCODE_F10:
         return 0x6D; //  kVK_F10 = 0x6D,
-    case SDLK_F12:
+    case SDL_SCANCODE_F12:
         return 0x6F; //  kVK_F12 = 0x6F,
-    case SDLK_F15:
+    case SDL_SCANCODE_F15:
         return 0x71; //  kVK_F15 = 0x71,
-    case SDLK_HELP:
+    case SDL_SCANCODE_HELP:
         return 0x72; //  kVK_Help = 0x72,
-    case SDLK_HOME:
+    case SDL_SCANCODE_HOME:
         return 0x73; //  kVK_Home = 0x73,
-    case SDLK_PAGEUP:
+    case SDL_SCANCODE_PAGEUP:
         return 0x74; //  kVK_PageUp = 0x74,
-    // case SDLK_ : return 0x75; //  kVK_ForwardDelete = 0x75, // TODO: what's this?
-    case SDLK_F4:
+    case SDL_SCANCODE_F4:
         return 0x76; //  kVK_F4 = 0x76,
-    case SDLK_END:
+    case SDL_SCANCODE_END:
         return 0x77; //  kVK_End = 0x77,
-    case SDLK_F2:
+    case SDL_SCANCODE_F2:
         return 0x78; //  kVK_F2 = 0x78,
-    case SDLK_PAGEDOWN:
+    case SDL_SCANCODE_PAGEDOWN:
         return 0x79; //  kVK_PageDown = 0x79,
-    case SDLK_F1:
+    case SDL_SCANCODE_F1:
         return 0x7A; //  kVK_F1 = 0x7A,
-    case SDLK_LEFT:
+    case SDL_SCANCODE_LEFT:
         return 0x7B; //  kVK_LeftArrow  = 0x7B, aka _LEFT_
-    case SDLK_RIGHT:
+    case SDL_SCANCODE_RIGHT:
         return 0x7C; //  kVK_RightArrow = 0x7C, aka _RIGHT
-    case SDLK_DOWN:
+    case SDL_SCANCODE_DOWN:
         return 0x7D; //  kVK_DownArrow  = 0x7D, aka _DOWN_
-    case SDLK_UP:
+    case SDL_SCANCODE_UP:
         return 0x7E; //  kVK_UpArrow    = 0x7E, aka _UP_
     default:
         return KBC_NONE;
@@ -393,7 +391,7 @@ void pump_events(void) {
         //       kbs_events with .state == KBS_UP come from?
         case SDL_KEYUP:
         case SDL_KEYDOWN: {
-            uchar c = sdlKeyCodeToSSHOCKkeyCode(ev.key.keysym.sym);
+            uchar c = sdlScanCodeToSSHOCKkeyCode(ev.key.keysym.scancode);
             if (c != KBC_NONE) {
                 kbs_event keyEvent = {0};
 
