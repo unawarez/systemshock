@@ -30,6 +30,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <math.h>
 #include <SDL.h>
 #include <SDL_keyboard.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "InitMac.h"
 #include "Modding.h"
@@ -82,19 +85,82 @@ struct ModArg;
 struct Args {
     bool no_splash;
     int log_level;
+    const char *gamedata_dir;
+    const char *savegame_dir;
+    const char *soundfonts_dir;
     size_t n_mod_args;
     const char **mod_args;
 };
-const struct Args DEFAULT_ARGS = {false, LOG_INFO, 0, 0};
-void show_usage(const char *arg0) {
+const struct Args DEFAULT_ARGS = {false, LOG_INFO};
+
+static void show_usage(const char *arg0) {
     fprintf(stderr,
             "Usage: %s [options...] [mod file/dir...]\n"
             "Options: (note: long args accept either `-arg` or `--arg`)\n"
-            "  -h, -help    Show usage info\n"
-            "  -v           Log level DEBUG\n"
-            "  -vv          Log level TRACE\n"
-            "  -nosplash    Disable splash screen\n",
+            "  -h, -help      Show usage info\n"
+            "  -v             Log level DEBUG\n"
+            "  -vv            Log level TRACE\n"
+            "  -nosplash      Disable splash screen\n"
+            "  -gamedir       Path to base game data (res/ folder)\n"
+            "  -savedir       Path to save game folder\n"
+            "  -soundfontdir  Path to SoundFonts folder for MIDI playback\n",
             arg0);
+}
+
+// return 0 => OK, N => show usage and exit with code N-1.
+static int parse_args(int argc, char **argv, struct Args *parsed) {
+    int result = 0;
+    char **args_end = argv + argc;
+    for (char **argp = argv + 1; argp < args_end; argp++) {
+
+#define SHIFT_ARG_VALUE(argname)                                              \
+    argp++;                                                                   \
+    if (argp >= args_end) {                                                   \
+        fprintf(stderr, "ERROR: argument `%s` missing a value.\n", #argname); \
+        return -2;                                                            \
+    } else {                                                                  \
+        arg = *argp;                                                          \
+    }
+
+        const char *arg = *argp;
+        if (arg[0] != '-') {
+            // assume it's a mod pathname
+            parsed->n_mod_args++;
+            parsed->mod_args = realloc(parsed->mod_args, sizeof(char *) * parsed->n_mod_args);
+            if (!parsed->mod_args)
+                exit(99);
+            parsed->mod_args[parsed->n_mod_args - 1] = arg;
+
+        } else if (!strcmp(arg, "-h") || !strcmp(arg, "-help") || !strcmp(arg, "--help")) {
+            // weird hack: not returning immediately. parse the rest of the
+            // args, and then a) can validate after the -h instead of only
+            // before, and b) can show the influence of user selecting stuff
+            // (i.e. showing paths, it's maybe(?!) less confusing to show what
+            // the user picked instead of the defaults).
+            result = 1;
+        } else if (!strcmp(arg, "-v")) {
+            parsed->log_level = LOG_DEBUG;
+        } else if (!strcmp(arg, "-vv")) {
+            parsed->log_level = LOG_TRACE;
+        } else if (!strcmp(arg, "-nosplash") || !strcmp(arg, "--nosplash")) {
+            parsed->no_splash = true;
+        } else if (!strcmp(arg, "-gamedir") || !strcmp(arg, "--gamedir")) {
+            SHIFT_ARG_VALUE(gamedir);
+            parsed->gamedata_dir = arg;
+        } else if (!strcmp(arg, "-savedir") || !strcmp(arg, "--savedir")) {
+            SHIFT_ARG_VALUE(savedir);
+            parsed->savegame_dir = arg;
+        } else if (!strcmp(arg, "-soundfontdir") || !strcmp(arg, "--soundfontdir")) {
+            SHIFT_ARG_VALUE(soundfontdir);
+            parsed->soundfonts_dir = arg;
+        } else {
+            fprintf(stderr, "ERROR: unknown argument `%s`\n", arg);
+            // unlike -h, DO return, because validating the rest may be
+            // meaningless.
+            return 2;
+        }
+    }
+    return result;
 }
 
 //------------------------------------------------------------------------------------
@@ -102,35 +168,48 @@ void show_usage(const char *arg0) {
 //------------------------------------------------------------------------------------
 int main(int argc, char **argv) {
     struct Args args = DEFAULT_ARGS;
-    for (char **argp = argv + 1; argp < argv + argc; argp++) {
-        const char *arg = *argp;
-        if (arg[0] != '-') {
-            // assume it's a mod pathname
-            args.n_mod_args++;
-            args.mod_args = realloc(args.mod_args, sizeof(char *) * args.n_mod_args);
-            if (!args.mod_args)
-                return 99;
-            args.mod_args[args.n_mod_args - 1] = arg;
-        } else if (!strcmp(arg, "-h") || !strcmp(arg, "-help") || !strcmp(arg, "--help")) {
-            show_usage(argv[0]);
-            return 0;
-        } else if (!strcmp(arg, "-v")) {
-            args.log_level = LOG_DEBUG;
-        } else if (!strcmp(arg, "-vv")) {
-            args.log_level = LOG_TRACE;
-        } else if (!strcmp(arg, "-nosplash") || !strcmp(arg, "--nosplash")) {
-            args.no_splash = true;
+
+    char *pref_path = SDL_GetPrefPath("Interrupt", "SystemShock");
+    if (pref_path) {
+        size_t strlen_pref_path = strlen(pref_path);
+        // on mac at least, pref path ends in /, but it's not documented and
+        // that would be a dumb bug if we appended res without a dir separator.
+        if (pref_path[strlen_pref_path - 1] == '/' || pref_path[strlen_pref_path - 1] == '\\') {
+            size_t sz = strlen_pref_path + 3 + 1;
+            char *res_path = malloc(sz);
+            snprintf(res_path, sz, "%sres", pref_path);
+            args.gamedata_dir = res_path;
         } else {
-            fprintf(stderr, "Unknown argument `%s`\n", arg);
-            show_usage(argv[0]);
-            return 1;
+            size_t sz = strlen_pref_path + 4 + 1;
+            char *res_path = malloc(sz);
+            snprintf(res_path, sz, "%s/res", pref_path);
+            args.gamedata_dir = res_path;
         }
+        args.savegame_dir = pref_path;
+        args.soundfonts_dir = pref_path;
+        // res_path and pref_path are leaked forever, but, whatever; they live
+        // the whole program and can't be changed.
+    } else {
+        args.gamedata_dir = "./res";
+        args.savegame_dir = "./res";
+        args.soundfonts_dir = "./res";
     }
 
-    // init file config early; who knows what depends on it?
-    shock_files_global_config.gamedata_dir = "./res";
-    shock_files_global_config.savegame_dir = SDL_GetPrefPath("Interrupt", "SystemShock");
-    // ^leak that pointer; whatever; it lives the whole program.
+    int parse_status = parse_args(argc, argv, &args);
+    if (parse_status) {
+        show_usage(argv[0]);
+        fprintf(stderr,
+                "Game paths (according to defaults plus user settings):\n"
+                "  Base game data:  %s\n"
+                "  Saved games:     %s\n"
+                "  SoundFonts:      %s\n",
+                args.gamedata_dir, args.savegame_dir, args.soundfonts_dir);
+        exit(parse_status - 1);
+    }
+
+    shock_files_global_config.gamedata_dir = args.gamedata_dir;
+    shock_files_global_config.savegame_dir = args.savegame_dir;
+    shock_files_global_config.soundfonts_dir = args.soundfonts_dir;
 
     // FIXME externalize this
     log_set_quiet(0);
@@ -326,7 +405,7 @@ void SDLDraw() {
     SDL_RenderClear(renderer);
     SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, drawSurface);
 
-    // Blit to the screen by drawing the surface 
+    // Blit to the screen by drawing the surface
     SDL_Rect srcRect = {0, 0, gScreenWide, gScreenHigh};
     SDL_RenderCopy(renderer, texture, &srcRect, NULL);
     SDL_DestroyTexture(texture);

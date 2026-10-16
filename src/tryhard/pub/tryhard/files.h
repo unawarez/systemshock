@@ -14,7 +14,7 @@ typedef struct ShockFilesConfig {
     // critical for the game).
     const char *savegame_dir;
     // Soundfont dir for MIDI playback.
-    const char *soundfont_dir;
+    const char *soundfonts_dir;
 } ShockFilesConfig;
 
 // cute lil unsafe global so existing code can be moved over without changing

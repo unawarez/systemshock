@@ -23,8 +23,7 @@ using stdpath = std::filesystem::path;
 using pathstring = std::filesystem::path::string_type;
 
 // acceptable defaults instead of segfaults:
-ShockFilesConfig shock_files_global_config{"res", "savegame", "res"};
-// (soundfonts in res is the back-compat choice)
+ShockFilesConfig shock_files_global_config{"res", "res", "res"};
 
 // Replacement for std::tolower used in the case-insensitive searching.
 // Everything online says std::tolower is full of undefined behavior. The case
@@ -338,7 +337,7 @@ ShockFilesSf2List *shock_files_sf2list_new(const ShockFilesConfig *cfg) {
             cfg = &shock_files_global_config;
         }
         std::vector<stdpath> files;
-        stdfs::directory_iterator di{stdfs::u8path(cfg->soundfont_dir)}, end{};
+        stdfs::directory_iterator di{stdfs::u8path(cfg->soundfonts_dir)}, end{};
         for (; di != end; di++) {
             if (di->is_regular_file() || di->is_symlink()) {
                 // TODO then need to check that the link target is regular
