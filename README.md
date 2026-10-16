@@ -3,6 +3,16 @@ This is a fork!
 
 Upstream is [inkyblackness/systemshock](https://github.com/inkyblackness/systemshock), which in turn is a fork of the original [Interrupt/systemshock](https://github.com/Interrupt/systemshock). I'm happy to upstream anything/everything but my edits are probably too messy for now.
 
+Notable changes:
+
+* Fix ObjSpecHeader misaligned pointer that prevented building on ARM
+* Disable IME input (fixes keyboard input on Mac)
+* Fix non-QWERTY layouts
+* Stop FluidSynth crashing if no SoundFonts are found
+* Set game data/save games/SoundFont paths from the CLI
+* Configurable dependency download+build versus system search and static link versus dynamic link
+* Remove runtime dependence on GLSL files
+
 Original readme follows.
 
 ***
