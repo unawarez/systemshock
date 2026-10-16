@@ -1,85 +1,77 @@
-# Building instructions
+# Build instructions
 
-## What do you want to achieve?
+The project builds a single executable named `systemshock`. It doesn't depend on any files at runtime, other than the game asset files that the user must provide, plus any shared libraries it was compiled against.
 
-When you want to build the binary yourself, you typically fall into one of the following categories:
-* a) You want to develop/build on your local machine, to run it on that machine.
-* b) You want to cross-compile on your local machine, to run it on another architecture.
-* c) You want to build all the supported formats.
+Building the project requires CMake version 4.x or late 3.x (see CMakeLists.txt for actual minimum version), plus a C99 compiler and a C++17 compiler. It's a cross-platform codebase, but historically on Windows it required a POSIX compatibility layer (CI builds for this project use MinGW); it may or may not be compatible with MSVC now.
 
-The necessary tasks of the respective categories are explained below. First, some general information.
+## Quickstart: building for yourself
 
-## General information
+This assumes familiarity with the command line, but not necessarily with CMake. You'll still need to know how to install CMake and a C/C++ compiler. There are non-command-line options like VS Code that have CMake integration, but require learning how to install and use the tools in their own idiosyncratic way.
 
-### Supported environments
+The biggest choice is if you want to get dependencies through "fetch mode" or "system mode". Fetch mode downloads and compiles the source code for all dependency libraries (SDL2, SDL2_mixer, etc). System mode searches for the already-compiled dependencies on your system. Fetch mode is less likely to have version conflicts and in many cases will "just work", but it's slower to compile the dependencies, requires an internet connection to do a fresh build from scratch, and you could run into compatibility issues building one of the dependencies on your machine. On the other hand, system mode is faster and leaner if you already have the dependencies installed, but if you have anything missing you will need to know how to diagnose the missing libraries and figure out how to install them on your machine.
 
-The project is set up to officially support common **desktop** environments:
-* Linux (32bit, 64bit)
-* MS Windows (32bit, 64bit)
-* ~~MacOS~~ (should be, but currently not working after the switch to Apple Silicon)
-
-> The emphasis on *desktop*, above, is deliberate. Only what builds by the automated build jobs
-> of this project is supported. If there is a permutation of another system that isn't ensured by a
-> build job, it may not work.
-> 
-> The following describes the ideal working setup. 
-
-### Dependencies
-
-* [CMake](https://cmake.org/) 3.x, with a minimum version according to `CMakeLists.txt`
-  > CMake 4 is no longer supporting various constructs found in some library dependencies.
-* GNU compiler suite (either that from Linux or MinGW; use WSL or [MSYS2](https://www.msys2.org/))
-* Internet connection (for downloading library dependencies for bundled library dependencies)
-
-## How to build?
-
-### You want to develop/build on your local machine and run it on that machine.
-
-#### Simple case
+For fetch mode:
 ```
-# 1) Download library dependencies and prepare build scripts (once, unless project structure is changed):
-cmake -B build -S .
-# 2) Build binary:
+# from the repository root:
+cmake --preset fetch
 cmake --build build
-# 3) Find the executable in the created build/ directory.
 ```
 
-#### CMake build options
-
-The following CMake options can be used to customize the build process:
-
-| Option              | Possible Values        | Description                                                                                                          |
-|---------------------|------------------------|----------------------------------------------------------------------------------------------------------------------|
-| `ENABLE_EXAMPLES`   | **OFF** / ON           | Enable example applications (can be broken!)                                                                         |
-| `ENABLE_DEBUG_BLIT` | **OFF** / ON           | Enable debugging blitter                                                                                             |
-| `ENABLE_OPENGL`     | **ON** / OFF           | Enable OpenGL support for improved graphics rendering                                                                |
-| `ENABLE_SDL2`       | **BUNDLED** / ON       | Use system-installed SDL2 or bundled version                                                                         |
-| `ENABLE_SOUND`      | **BUNDLED** / ON / OFF | Enable sound support (requires SDL2_mixer); ON uses system library, BUNDLED uses bundled version, OFF disables sound |
-| `ENABLE_FLUIDSYNTH` | **BUNDLED** / ON / OFF | Enable FluidSynth MIDI support; ON uses system library, BUNDLED uses bundled version, OFF disables MIDI support      |
-
-To use these options, pass them to CMake with the `-D` flag:
-
-```bash
-cmake -B build -S . -DENABLE_OPENGL=OFF -DENABLE_SOUND=OFF
+For system mode:
+```
+# from the repository root:
+cmake --preset system
+cmake --build build
 ```
 
-> Note that the support for system-provided libraries may be removed at a future point.
-> The bundled versions are downloaded and handled by CMake in a defined version. 
+Both the `fetch` and `system` presets use build mode `RelWithDebInfo` (release mode with debug info; for a true debug build, add `-DCMAKE_BUILD_TYPE=Debug` to the command line) and they use `build/` as the default build directory (to override, add `-B mybuilddir` to the command line, and then build with `cmake --build mybuilddir`).
 
-### You want to cross-compile on your local machine for a different target.
+Either way, building will generate an executable at `build/systemshock` (or `build/systemshock.exe` on Windows).
 
-Cross-compilation is considered to be a build that targets a different architecture than what is default for your machine.
-This also includes building a 32-bit variant on your 64-bit machine!
+For convenience you can place a `res/` folder with game assets in the repository root, and then running `build/systemshock` from the repo root will let the game find the assets. `/res/` will be ignored by Git, but keep a backup copy elsewhere since `git clean` will delete this one.
 
-For such cases, use and provide a [CMake toolchain file](https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html):
-```
-cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=<path-to-your-file>
-```
-Refer to `cmake/toolchains` subdirectory for the ones this project uses.
+> **WARNING:** The CMake install step is old and moderately broken at this point; ignore it for now.
 
-### You want to build all the supported formats.
+## Advanced CMake configuration
 
-This is essentially the work of the build pipeline. See `.github/workflows/main-build.yml` that combines all the information above.
+The project declares several settings with names starting with `SHOCK_`. Below is a summary, but the source of truth is the top of CMakeLists.txt (they are all grouped in a section labeled "External options").
 
-On a Linux system, or an MS Windows one with WSL2, you can cover at least the Linux and MS Windows binaries,
-using GCC and MinGW.
+### Features
+
+* **SHOCK_ENABLE_OPENGL:** Enable OpenGL renderer. Requires system OpenGL headers/libraries, and GLEW on Windows
+* **SHOCK_ENABLE_SOUND:** Enable sound (requires SDL2_mixer)
+    * **SHOCK_ENABLE_SOUND_FLUIDSYNTH:** Enable FluidSynth MIDI playback (requires FluidSynth)
+    * **SHOCK_ENABLE_SOUND_ALSA:** Enable ALSA MIDI playback on Linux (requires system ALSA headers/libraries)
+
+### Build config
+
+* **SHOCK_BIN_LINK_OPTIONS:** Extra link options for the `systemshock` executable (;-separated list)
+
+### Dependency controls
+
+> **WARNING:** Changing any of these settings after your initial configure is very likely to break your build, so either use `cmake --fresh` or delete your build folder first. On the first configure, most libraries save lots of very config-specific info into the cache, and most of it (especially `find_package` stuff) will not properly recalculate even when you change the "higher-level" settings.
+
+For most (but not all) dependency libraries, you can control if they are downloaded and compiled from source or searched for on the system. You can also control if they are statically or dynamically linked to the game. There are two global settings, SHOCK_DEPS_DEFAULT_FETCH and SHOCK_DEPS_DEFAULT_STATIC, that control this for all libraries, and then you can override these settings per library by setting `SHOCK_DEPS_<name>_FETCH` or `SHOCK_DEPS_<name>_STATIC`. Note these settings are all binding requirements; there is no automatic fallback logic if libraries aren't found or can't be built. The allowed values are:
+
+* **FETCH:** ON means "download source code from a fixed URL and compile it". OFF means "find the library on your system", usually via CMake's `find_package`. You may be able to use standard CMake flags to control the `find_package` search, or else directly override the discovered paths in the CMake cache.
+* **STATIC:** ON means "static link to this library". OFF means "dynamic link to this library".
+
+General guidelines for fetch and static settings:
+
+| FETCH | STATIC | Description
+|-------|--------|-------------
+| ON    | ON     | Self-contained executable. Good for Windows and Mac-app-bundle releases. Difficult for Linux distribution because graphics dependencies are very messy.
+| ON    | OFF    | Unlikely to have any advantage over ON/ON.
+| OFF   | OFF    | Use system shared libraries. Good for Linux distro-specific or Homebrew releases.
+| OFF   | ON     | Unlikely to work because many system/Homebrew packages don't provide static libraries.
+
+Per-library control is intended as an escape hatch for environment-specific problems. Some per-library choices may cause conflicts. For example, it is known that SDL2 and SDL2_mixer must have the same STATIC setting or else they will fail to build. It's assumed if you're at this level of config, you know what you're doing and how to diagnose errors.
+
+Allowed names for the `<name>` part of the per-library overrides (case-sensitive):
+* `SDL2`
+* `SDL2_mixer`
+* `FluidSynth`
+
+Note that list excludes OpenGL and ALSA; they cannot be fetched or statically linked (TODO can you static link ALSA?). (Also GLEW is a weird secret dependency specifically for Windows; it is always fetched and compiled. Mac and Linux currently get away with not having a GL loader.)
+
+Fetch mode operates on fixed URLs that can't be overridden. The fetch code may override some build settings of the libraries it builds. Defining subproject settings yourself on the main CMake project may or may not be passed through correctly (this could probably be improved if needed).

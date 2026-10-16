@@ -2,10 +2,38 @@
     "version": 4,
     "configurePresets": [
         {
-            "name": "release-mingw",
-            "displayName": "Release build on Windows (MinGW)",
-            "description": "RelWithDebInfo, all deps in fetch + static mode, and final executable is linked with `-static` to avoid depending on MinGW DLLs at runtime",
+            "name": "base",
+            "hidden": true,
             "binaryDir": "build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
+        },
+        {
+            "name": "fetch",
+            "displayName": "Dev: fetch mode",
+            "description": "Developer build that downloads source code and compiles static libraries for all dependencies",
+            "inherits": "base",
+            "cacheVariables": {
+                "SHOCK_DEPS_DEFAULT_FETCH": "ON",
+                "SHOCK_DEPS_DEFAULT_STATIC": "ON"
+            }
+        },
+        {
+            "name": "system",
+            "displayName": "Dev: system mode",
+            "description": "Developer build that searches for pre-installed shared libraries for all dependencies",
+            "inherits": "base",
+            "cacheVariables": {
+                "SHOCK_DEPS_DEFAULT_FETCH": "OFF",
+                "SHOCK_DEPS_DEFAULT_STATIC": "OFF"
+            }
+        },
+        {
+            "name": "release-mingw",
+            "displayName": "Release: Windows (MinGW)",
+            "description": "RelWithDebInfo, all deps in fetch + static mode, and final executable is linked with `-static` to avoid depending on MinGW DLLs at runtime",
+            "inherits": "base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "SHOCK_DEPS_DEFAULT_FETCH": "ON",

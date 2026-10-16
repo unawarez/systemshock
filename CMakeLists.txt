@@ -15,10 +15,10 @@ configure_file("${CMAKE_SOURCE_DIR}/src/GameSrc/Headers/shockolate_version.h.in"
 ###############################################################################
 include(cmake/options_plumbing.cmake)
 # Main features
-foption(SHOCK_ENABLE_OPENGL "Enable OpenGL renderer" ON)
+foption(SHOCK_ENABLE_OPENGL "Enable OpenGL renderer. Requires system OpenGL headers/libraries, and GLEW on Windows" ON)
 foption(SHOCK_ENABLE_SOUND "Enable sound (requires SDL2_mixer)" ON)
-foption(SHOCK_ENABLE_SOUND_FLUIDSYNTH "Enable FluidSynth MIDI playback" ON)
-foption(SHOCK_ENABLE_SOUND_ALSA "Enable ALSA MIDI playback on Linux" ON)
+foption(SHOCK_ENABLE_SOUND_FLUIDSYNTH "Enable FluidSynth MIDI playback (requires FluidSynth)" ON)
+foption(SHOCK_ENABLE_SOUND_ALSA "Enable ALSA MIDI playback on Linux (requires system ALSA headers/libraries)" ON)
 
 # Build configuration
 # Link options applied only to the `systemshock` binary (or other executables
@@ -27,7 +27,7 @@ foption(SHOCK_ENABLE_SOUND_ALSA "Enable ALSA MIDI playback on Linux" ON)
 # `-static` on MinGW as that seems the only reliable way to avoid shared
 # linking to MinGW runtime DLLs.
 set(SHOCK_BIN_LINK_OPTIONS "" CACHE STRING
-    "Extra link options for the systemshock executable (;-separated list)"
+    "Extra link options for the `systemshock` executable (;-separated list)"
 )
 
 # Internal dev/test stuff
