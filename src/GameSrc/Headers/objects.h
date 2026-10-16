@@ -117,6 +117,7 @@ typedef struct old_Obj {
 
 // The header for an array of class-specific data
 #pragma pack(pop) // 2026 aligned pointer fix. I am *sorta sure* from reading code that this struct is never serialized. I am more sure from saving/loading games without any crashes.
+// It's painful that this is almsot half padding on 64 bit, but only 15 of these are constructed.
 typedef struct ObjSpecHeader {
     uchar size;        // size of array
     uchar struct_size; // size of each element
