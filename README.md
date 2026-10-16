@@ -10,8 +10,20 @@ Notable changes:
 * Fix non-QWERTY layouts
 * Stop FluidSynth crashing if no SoundFonts are found
 * Set game data/save games/SoundFont paths from the CLI
-* Configurable dependency download+build versus system search and static link versus dynamic link
+* Configurable dependencies: download+build versus system search, and static link versus dynamic link
 * Remove runtime dependence on GLSL files
+
+Goals:
+
+* Fix GL renderer
+    * 3D doesn't resize
+    * World sprites have no depth testing
+* Fix music
+    * Bad pitch bend range
+    * Stuck pitch bend values(?)
+    * Random layer delay
+    * Bad note timing
+* Logarithmic volume control for music and sound
 
 Original readme follows.
 
